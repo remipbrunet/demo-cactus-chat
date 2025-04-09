@@ -15,7 +15,7 @@ export async function streamAnthropicCompletion(
   try {
     const response = await anthropic.messages.create({
       model,
-      system: 'You are a helpful AI assistant called Cactus.',
+      system: 'You are a helpful AI assistant called Claude.',
       messages: messages.map(msg => ({
         role: msg.isUser ? 'user' : 'assistant',
         content: msg.text

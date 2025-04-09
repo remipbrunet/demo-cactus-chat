@@ -24,7 +24,7 @@ export async function streamChatCompletion(
     
     // Format messages for the OpenAI API
     const formattedMessages = [
-      { role: 'system' as const, content: 'You are a helpful AI assistant called Cactus.' },
+      { role: 'system' as const, content: 'You are a helpful AI assistant called ChatGPT.' },
       ...messages.map(msg => ({
         role: msg.isUser ? 'user' as const : 'assistant' as const,
         content: msg.text
