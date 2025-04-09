@@ -121,7 +121,6 @@ export function SettingsSheet({
                   size="$4"
                   theme="red"
                   icon={Trash}
-                  circular
                   onPress={onDeleteOpenAI}
                 />
               )}
@@ -149,7 +148,6 @@ export function SettingsSheet({
                   size="$4"
                   theme="red"
                   icon={Trash}
-                  circular
                   onPress={onDeleteAnthropic}
                 />
               )}

@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getAnthropicKey } from './storage';
 import { Message } from './openai';
+// import { measureModelPerformance, estimateTokenCount } from '../utils/modelMetrics';
 
 // Dynamic client creation based on stored key
 async function getAnthropicClient(): Promise<Anthropic | null> {
@@ -39,9 +40,14 @@ export async function streamAnthropicCompletion(
     const textBlock = response.content.find(block => block.type === 'text');
     const responseText = textBlock?.text || '';
     
+    // Pass the response with metrics to callbacks
     onProgress(responseText);
     onComplete(responseText);
-    return responseText;
+    
+    return { 
+      text: responseText, 
+      // metrics 
+    };
   } catch (error) {
     console.error('Error:', error);
     throw error;

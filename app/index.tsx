@@ -25,6 +25,7 @@ import {
   deleteOpenAIKey,
   deleteAnthropicKey
 } from '../services/storage';
+import { ModelMetrics } from '@/utils/modelMetrics';
 
 export default function ChatScreen() {
   const [open, setOpen] = useState(false);
@@ -251,7 +252,7 @@ export default function ChatScreen() {
 
     try {
       if (selectedModel.provider === 'openai') {
-        await streamChatCompletion(
+        const result = await streamChatCompletion(
           updatedMessages,
           selectedModel.value,
           (streamText: string) => {
@@ -265,18 +266,33 @@ export default function ChatScreen() {
               return updated;
             });
           },
-          (finalText) => {
+          (modelMetrics: ModelMetrics) => {
             // Final update when streaming completes
             setIsStreaming(false);
             // Save the updated conversation
             setMessages(prev => {
-              saveCurrentConversation(prev);
-              return prev;
+              const updated = [...prev];
+              const lastMessage = updated[updated.length - 1];
+              lastMessage.metrics = modelMetrics;
+              saveCurrentConversation(updated);
+              return updated;
             });
           }
         );
+        
+        if (result && 'metrics' in result) {
+          // Update message with metrics
+          setMessages(prev => {
+            const updated = [...prev];
+            const lastMessage = updated[updated.length - 1];
+            if (!lastMessage.isUser) {
+              lastMessage.metrics = result.metrics;
+            }
+            return updated;
+          });
+        }
       } else if (selectedModel.provider === 'anthropic') {
-        await streamAnthropicCompletion(
+        const result = await streamAnthropicCompletion(
           updatedMessages,
           selectedModel.value,
           (streamText: string) => {
@@ -298,6 +314,18 @@ export default function ChatScreen() {
             });
           }
         );
+        
+        if (result && 'metrics' in result) {
+          // Update message with metrics
+          setMessages(prev => {
+            const updated = [...prev];
+            const lastMessage = updated[updated.length - 1];
+            if (!lastMessage.isUser) {
+              lastMessage.metrics = result.metrics;
+            }
+            return updated;
+          });
+        }
       } else if (selectedModel.provider === 'cactus') {
         // Future implementation for Cactus provider
         setTimeout(() => {
