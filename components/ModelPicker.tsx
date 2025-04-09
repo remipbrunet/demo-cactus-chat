@@ -2,12 +2,14 @@ import { ChevronDown, ChevronUp } from '@tamagui/lucide-icons';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { Dispatch, SetStateAction } from 'react';
 import { Model, models } from '../services/models';
+import { ViewStyle } from 'react-native';
 
 const dropdownStyles = {
   container: {
-    width: 'fit-content',
-    // alignSelf: 'center'
-  },
+    // width: 'fit-content', // React Native doesn't support 'fit-content'
+    // Use auto instead
+    width: 'auto'
+  } as ViewStyle,
   picker: {
     borderWidth: 0,
     backgroundColor: "#f2f2f2",
@@ -31,9 +33,10 @@ interface ModelPickerProps {
   setOpen: Dispatch<SetStateAction<boolean>>;
   setValue: Dispatch<SetStateAction<string | null>>;
   onSelectModel: (model: Model) => void;
+  zIndex?: number;
 }
 
-export function ModelPicker({ open, value, setOpen, setValue, onSelectModel }: ModelPickerProps) {
+export function ModelPicker({ open, value, setOpen, setValue, onSelectModel, zIndex = 50 }: ModelPickerProps) {
   const items = models.map(model => ({
     label: model.label,
     value: model.id,
@@ -54,7 +57,11 @@ export function ModelPicker({ open, value, setOpen, setValue, onSelectModel }: M
       style={dropdownStyles.picker}
       dropDownContainerStyle={dropdownStyles.itemContainer}
       textStyle={dropdownStyles.text}
-      containerStyle={dropdownStyles.container}
+      containerStyle={{
+        ...dropdownStyles.container,
+        zIndex
+      }}
+      zIndex={zIndex}
       ArrowDownIconComponent={({ style }) => <ChevronDown size={16} color="#000" />}
       ArrowUpIconComponent={({ style }) => <ChevronUp size={16} color="#000" />}
       listItemContainerStyle={{ height: 32 }}

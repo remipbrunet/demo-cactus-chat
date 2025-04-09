@@ -5,10 +5,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Menu, Settings, Send } from '@tamagui/lucide-icons';
 import { ChatMessage } from '../components/ChatMessage';
 import { ModelPicker } from '../components/ModelPicker';
+import { ConversationSidebar } from '../components/ConversationSidebar';
 import { Message, generateUniqueId, streamChatCompletion } from '../services/openai';
 import { streamAnthropicCompletion } from '../services/anthropic';
 import { Model, models } from '../services/models';
-import { Conversation, saveConversation, getConversation, saveLastUsedModel, getLastUsedModel } from '../services/storage';
+import { 
+  Conversation, 
+  saveConversation, 
+  getConversation, 
+  saveLastUsedModel, 
+  getLastUsedModel,
+  getConversations 
+} from '../services/storage';
 
 export default function ChatScreen() {
   const [open, setOpen] = useState(false);
@@ -18,7 +26,19 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string>(generateUniqueId());
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [allConversations, setAllConversations] = useState<Conversation[]>([]);
   const scrollViewRef = useRef<any>(null);
+
+  // Load conversations list
+  useEffect(() => {
+    const loadConversations = async () => {
+      const conversations = await getConversations();
+      setAllConversations(conversations);
+    };
+    
+    loadConversations();
+  }, [messages]); // Reload when messages change to keep list updated
 
   // Load initial state
   useEffect(() => {
@@ -45,13 +65,13 @@ export default function ChatScreen() {
         }
       } else {
         // Create a new conversation with welcome message
-        const welcomeMessage: Message = {
-          id: generateUniqueId(),
-          isUser: false,
-          text: 'Hello! How can I help you today?'
-        };
-        setMessages([welcomeMessage]);
-        saveCurrentConversation([welcomeMessage]);
+        // const welcomeMessage: Message = {
+        //   id: generateUniqueId(),
+        //   isUser: false,
+        //   text: 'Hello! How can I help you today?'
+        // };
+        setMessages([]);
+        saveCurrentConversation([]);
       }
     };
     
@@ -82,6 +102,18 @@ export default function ChatScreen() {
   const handleModelSelect = (model: Model) => {
     setSelectedModel(model);
     saveLastUsedModel(model.id);
+  };
+
+  const handleSelectConversation = async (id: string) => {
+    setConversationId(id);
+  };
+  
+  const createNewConversation = () => {
+    // Generate a new conversation ID
+    const newId = generateUniqueId();
+    // Reset the conversation
+    setConversationId(newId);
+    setMessages([]);
   };
 
   const sendMessage = async () => {
@@ -204,6 +236,15 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
+      <ConversationSidebar
+        isOpen={sidebarOpen}
+        conversations={allConversations}
+        onClose={() => setSidebarOpen(false)}
+        onSelectConversation={handleSelectConversation}
+        onNewConversation={createNewConversation}
+        zIndex={1000}
+      />
+      
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
         style={{ flex: 1 }}
@@ -216,13 +257,23 @@ export default function ChatScreen() {
             marginTop={4}
             justifyContent="space-between"
           >
-            <Button icon={Menu} circular size="$2" chromeless />
+            <Button 
+              icon={Menu} 
+              circular 
+              size="$2" 
+              chromeless 
+              onPress={() => {
+                if (open) setOpen(false);
+                setSidebarOpen(true);
+              }}
+            />
             <ModelPicker
               open={open}
               value={value}
               setOpen={setOpen}
               setValue={setValue}
               onSelectModel={handleModelSelect}
+              zIndex={50}
             />
             <Button icon={Settings} circular size="$2" chromeless />
           </XStack>
