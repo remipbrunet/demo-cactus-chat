@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronUp } from '@tamagui/lucide-icons';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { Dispatch, SetStateAction } from 'react';
-import { Model, models } from '../services/models';
+import { Model, models as defaultModels } from '../services/models';
 import { ViewStyle } from 'react-native';
 
 const dropdownStyles = {
@@ -34,18 +34,27 @@ interface ModelPickerProps {
   setValue: Dispatch<SetStateAction<string | null>>;
   onSelectModel: (model: Model) => void;
   zIndex?: number;
+  models?: Model[];
 }
 
-export function ModelPicker({ open, value, setOpen, setValue, onSelectModel, zIndex = 50 }: ModelPickerProps) {
+export function ModelPicker({ 
+  open, 
+  value, 
+  setOpen, 
+  setValue, 
+  onSelectModel, 
+  zIndex = 50,
+  models = defaultModels
+}: ModelPickerProps) {
   const items = models.map(model => ({
     label: model.label,
-    value: model.id,
+    value: model.value,
     disabled: model.disabled
   }));
 
   const handleChange = (itemValue: string | null) => {
     if (itemValue) {
-      const selectedModel = models.find(model => model.id === itemValue);
+      const selectedModel = models.find(model => model.value === itemValue);
       if (selectedModel) onSelectModel(selectedModel);
     }
   };

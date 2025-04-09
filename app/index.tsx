@@ -1,34 +1,75 @@
 import { XStack, YStack, Input, Button, ScrollView } from 'tamagui';
 import { useRef, useState, useEffect } from 'react';
-import { KeyboardAvoidingView, Platform } from 'react-native';
+import { KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Menu, Settings, Send } from '@tamagui/lucide-icons';
 import { ChatMessage } from '../components/ChatMessage';
 import { ModelPicker } from '../components/ModelPicker';
 import { ConversationSidebar } from '../components/ConversationSidebar';
+import { SettingsSheet } from '../components/SettingsSheet';
+import { ApiKeyDialog } from '../components/ApiKeyDialog';
 import { Message, generateUniqueId, streamChatCompletion } from '../services/openai';
 import { streamAnthropicCompletion } from '../services/anthropic';
-import { Model, models } from '../services/models';
+import { Model, models as initialModels, refreshModelAvailability } from '../services/models';
 import { 
   Conversation, 
   saveConversation, 
   getConversation, 
   saveLastUsedModel, 
   getLastUsedModel,
-  getConversations 
+  getConversations,
+  saveOpenAIKey,
+  saveAnthropicKey,
+  getOpenAIKey,
+  getAnthropicKey,
+  deleteOpenAIKey,
+  deleteAnthropicKey
 } from '../services/storage';
 
 export default function ChatScreen() {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState<Model>(models[0]);
+  const [selectedModel, setSelectedModel] = useState<Model>(initialModels[0]);
+  const [availableModels, setAvailableModels] = useState<Model[]>(initialModels);
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string>(generateUniqueId());
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [allConversations, setAllConversations] = useState<Conversation[]>([]);
+  const [openAIDialogOpen, setOpenAIDialogOpen] = useState(false);
+  const [anthropicDialogOpen, setAnthropicDialogOpen] = useState(false);
+  const [hasOpenAIKey, setHasOpenAIKey] = useState(false);
+  const [hasAnthropicKey, setHasAnthropicKey] = useState(false);
   const scrollViewRef = useRef<any>(null);
+
+  // Load API keys and update model availability
+  useEffect(() => {
+    const loadApiKeys = async () => {
+      const openAIKey = await getOpenAIKey();
+      const anthropicKey = await getAnthropicKey();
+      
+      setHasOpenAIKey(!!openAIKey);
+      setHasAnthropicKey(!!anthropicKey);
+      
+      // Update available models based on API keys
+      const updatedModels = await refreshModelAvailability();
+      setAvailableModels(updatedModels);
+      
+      // If the currently selected model is now disabled, select the first available model
+      if (updatedModels.find(m => m.value === selectedModel.value)?.disabled) {
+        const firstAvailableModel = updatedModels.find(m => !m.disabled);
+        if (firstAvailableModel) {
+          setSelectedModel(firstAvailableModel);
+          setValue(firstAvailableModel.value);
+          await saveLastUsedModel(firstAvailableModel.value);
+        }
+      }
+    };
+    
+    loadApiKeys();
+  }, [hasOpenAIKey, hasAnthropicKey]);
 
   // Load conversations list
   useEffect(() => {
@@ -46,7 +87,7 @@ export default function ChatScreen() {
       // Load last used model
       const lastModelId = await getLastUsedModel();
       if (lastModelId) {
-        const lastModel = models.find(m => m.id === lastModelId);
+        const lastModel = initialModels.find(m => m.value === lastModelId);
         if (lastModel && !lastModel.disabled) {
           setSelectedModel(lastModel);
           setValue(lastModelId);
@@ -58,10 +99,10 @@ export default function ChatScreen() {
       if (conversation) {
         setMessages(conversation.messages);
         // Set model from conversation if available
-        const model = models.find(m => m.id === conversation.modelId);
+        const model = initialModels.find(m => m.value === conversation.modelId);
         if (model && !model.disabled) {
           setSelectedModel(model);
-          setValue(model.id);
+          setValue(model.value);
         }
       } else {
         // Create a new conversation with welcome message
@@ -93,7 +134,7 @@ export default function ChatScreen() {
       title,
       messages: currentMessages,
       lastUpdated: Date.now(),
-      modelId: selectedModel.id
+      modelId: selectedModel.value
     };
     
     await saveConversation(conversation);
@@ -101,7 +142,7 @@ export default function ChatScreen() {
 
   const handleModelSelect = (model: Model) => {
     setSelectedModel(model);
-    saveLastUsedModel(model.id);
+    saveLastUsedModel(model.value);
   };
 
   const handleSelectConversation = async (id: string) => {
@@ -114,6 +155,70 @@ export default function ChatScreen() {
     // Reset the conversation
     setConversationId(newId);
     setMessages([]);
+  };
+
+  const handleConnectOpenAI = () => {
+    setSettingsOpen(false);
+    setOpenAIDialogOpen(true);
+  };
+  
+  const handleConnectAnthropic = () => {
+    setSettingsOpen(false);
+    setAnthropicDialogOpen(true);
+  };
+  
+  const handleSaveOpenAIKey = async (key: string) => {
+    await saveOpenAIKey(key);
+    setHasOpenAIKey(true);
+    setOpenAIDialogOpen(false);
+  };
+  
+  const handleSaveAnthropicKey = async (key: string) => {
+    await saveAnthropicKey(key);
+    setHasAnthropicKey(true);
+    setAnthropicDialogOpen(false);
+  };
+
+  const handleDeleteOpenAIKey = () => {
+    Alert.alert(
+      "Delete OpenAI Key", 
+      "Are you sure you want to remove your OpenAI API key?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await deleteOpenAIKey();
+            setHasOpenAIKey(false);
+          }
+        }
+      ]
+    );
+  };
+  
+  const handleDeleteAnthropicKey = () => {
+    Alert.alert(
+      "Delete Anthropic Key", 
+      "Are you sure you want to remove your Anthropic API key?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await deleteAnthropicKey();
+            setHasAnthropicKey(false);
+          }
+        }
+      ]
+    );
   };
 
   const sendMessage = async () => {
@@ -274,8 +379,15 @@ export default function ChatScreen() {
               setValue={setValue}
               onSelectModel={handleModelSelect}
               zIndex={50}
+              models={availableModels}
             />
-            <Button icon={Settings} circular size="$2" chromeless />
+            <Button 
+              icon={Settings} 
+              circular 
+              size="$2" 
+              chromeless 
+              onPress={() => setSettingsOpen(true)}
+            />
           </XStack>
           <ScrollView 
             ref={scrollViewRef}
@@ -305,6 +417,31 @@ export default function ChatScreen() {
           </XStack>
         </YStack>
       </KeyboardAvoidingView>
+      
+      <SettingsSheet
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        onConnectOpenAI={handleConnectOpenAI}
+        onConnectAnthropic={handleConnectAnthropic}
+        onDeleteOpenAI={handleDeleteOpenAIKey}
+        onDeleteAnthropic={handleDeleteAnthropicKey}
+        hasOpenAIKey={hasOpenAIKey}
+        hasAnthropicKey={hasAnthropicKey}
+      />
+      
+      <ApiKeyDialog
+        open={openAIDialogOpen}
+        provider="OpenAI"
+        onClose={() => setOpenAIDialogOpen(false)}
+        onSave={handleSaveOpenAIKey}
+      />
+      
+      <ApiKeyDialog
+        open={anthropicDialogOpen}
+        provider="Anthropic"
+        onClose={() => setAnthropicDialogOpen(false)}
+        onSave={handleSaveAnthropicKey}
+      />
     </SafeAreaView>
   );
 }

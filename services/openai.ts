@@ -1,11 +1,16 @@
 import OpenAI from 'openai';
-import { OPENAI_API_KEY } from '@env';
+import { getOpenAIKey } from './storage';
 
-// Initialize the OpenAI client
-const openai = new OpenAI({
-  apiKey: OPENAI_API_KEY || '',
-  dangerouslyAllowBrowser: true, // For client-side usage (replace with server-side in production)
-});
+// Dynamic client creation based on stored key
+async function getOpenAIClient(): Promise<OpenAI | null> {
+  const apiKey = await getOpenAIKey();
+  if (!apiKey) return null;
+  
+  return new OpenAI({
+    apiKey,
+    dangerouslyAllowBrowser: true, // For client-side usage
+  });
+}
 
 export interface Message {
   id: string;
@@ -22,6 +27,12 @@ export async function streamChatCompletion(
   try {
     console.log('Starting OpenAI request with model:', model);
     
+    // Get OpenAI client with stored API key
+    const openai = await getOpenAIClient();
+    if (!openai) {
+      throw new Error('OpenAI API key not found. Please add your API key in settings.');
+    }
+    
     // Format messages for the OpenAI API
     const formattedMessages = [
       { role: 'system' as const, content: 'You are a helpful AI assistant called ChatGPT.' },
@@ -31,8 +42,6 @@ export async function streamChatCompletion(
       }))
     ];
 
-    console.log('API Key available:', !!OPENAI_API_KEY);
-    
     // Create the chat completion without streaming
     const response = await openai.chat.completions.create({
       model,

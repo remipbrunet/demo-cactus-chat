@@ -18,6 +18,8 @@ interface ConversationsStore {
 // Keys for AsyncStorage
 const STORAGE_KEY = '@cactus_conversations';
 const LAST_MODEL_KEY = '@last_used_model';
+const OPENAI_API_KEY = '@cactus_openai_api_key';
+const ANTHROPIC_API_KEY = '@cactus_anthropic_api_key';
 
 // Save a single conversation
 export async function saveConversation(conversation: Conversation): Promise<void> {
@@ -91,5 +93,60 @@ export async function getLastUsedModel(): Promise<string | null> {
   } catch (error) {
     console.error('Error loading last model:', error);
     return null;
+  }
+}
+
+// API Key Management
+
+// Save API keys
+export async function saveOpenAIKey(key: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(OPENAI_API_KEY, key);
+  } catch (error) {
+    console.error('Error saving OpenAI key:', error);
+  }
+}
+
+export async function saveAnthropicKey(key: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(ANTHROPIC_API_KEY, key);
+  } catch (error) {
+    console.error('Error saving Anthropic key:', error);
+  }
+}
+
+// Get API keys
+export async function getOpenAIKey(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(OPENAI_API_KEY);
+  } catch (error) {
+    console.error('Error loading OpenAI key:', error);
+    return null;
+  }
+}
+
+export async function getAnthropicKey(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(ANTHROPIC_API_KEY);
+  } catch (error) {
+    console.error('Error loading Anthropic key:', error);
+    return null;
+  }
+}
+
+// Delete API keys
+export async function deleteOpenAIKey(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(OPENAI_API_KEY);
+  } catch (error) {
+    console.error('Error deleting OpenAI key:', error);
+  }
+}
+
+export async function deleteAnthropicKey(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(ANTHROPIC_API_KEY);
+  } catch (error) {
+    console.error('Error deleting Anthropic key:', error);
   }
 } 

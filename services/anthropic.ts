@@ -1,10 +1,16 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { ANTHROPIC_API_KEY } from '@env';
+import { getAnthropicKey } from './storage';
 import { Message } from './openai';
 
-const anthropic = new Anthropic({
-  apiKey: ANTHROPIC_API_KEY || ''
-});
+// Dynamic client creation based on stored key
+async function getAnthropicClient(): Promise<Anthropic | null> {
+  const apiKey = await getAnthropicKey();
+  if (!apiKey) return null;
+  
+  return new Anthropic({
+    apiKey,
+  });
+}
 
 export async function streamAnthropicCompletion(
   messages: Message[],
@@ -13,6 +19,12 @@ export async function streamAnthropicCompletion(
   onComplete: (fullText: string) => void
 ) {
   try {
+    // Get Anthropic client with stored API key
+    const anthropic = await getAnthropicClient();
+    if (!anthropic) {
+      throw new Error('Anthropic API key not found. Please add your API key in settings.');
+    }
+    
     const response = await anthropic.messages.create({
       model,
       system: 'You are a helpful AI assistant called Claude.',
