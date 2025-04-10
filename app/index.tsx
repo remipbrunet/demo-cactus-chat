@@ -136,7 +136,7 @@ export default function ChatScreen() {
       title,
       messages: currentMessages,
       lastUpdated: Date.now(),
-      modelId: selectedModel.value
+      model: selectedModel
     };
     
     await saveConversation(conversation);
@@ -230,7 +230,8 @@ export default function ChatScreen() {
     const userMessage: Message = {
       id: generateUniqueId(),
       isUser: true,
-      text: inputText
+      text: inputText,
+      model: selectedModel
     };
     
     const updatedMessages = [...messages, userMessage];
@@ -244,7 +245,8 @@ export default function ChatScreen() {
     const assistantMessage: Message = {
       id: generateUniqueId(),
       isUser: false,
-      text: '...'
+      text: '...',
+      model: selectedModel
     };
     
     const messagesWithAssistant = [...updatedMessages, assistantMessage];

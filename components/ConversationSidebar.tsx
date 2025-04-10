@@ -50,7 +50,7 @@ export function ConversationSidebar({
     >
       <YStack
         backgroundColor="$background"
-        width="70%"
+        width="82%"
         height="100%"
         borderRightWidth={1}
         borderColor="$borderColor"
@@ -103,7 +103,7 @@ export function ConversationSidebar({
                     <YStack>
                       <Text fontSize={15} fontWeight="500" numberOfLines={1}>{conversation.title}</Text>
                       <Text fontSize={13} color="$gray11" marginTop={2} numberOfLines={1}>
-                        {new Date(conversation.lastUpdated).toLocaleDateString()} · {conversation.modelId}
+                        {new Date(conversation.lastUpdated).toLocaleDateString()} · {conversation.model?.label}
                       </Text>
                     </YStack>
                   </Button>

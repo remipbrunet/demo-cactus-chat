@@ -72,7 +72,7 @@ export function SettingsSheet({
         
         <Animated.View
           style={{
-            height: '75%',
+            height: '82%',
             transform: [{ translateY: slideAnim }],
           }}
         >
@@ -94,7 +94,11 @@ export function SettingsSheet({
             </XStack>
             
             <Text fontSize={18} fontWeight="600" textAlign="center" marginBottom={16}>
-              Settings
+              Developer Settings
+            </Text>
+
+            <Text fontSize={14} fontWeight="300" textAlign="center" marginBottom={16}>
+              In addition to using Cactus models in private mode, you can add API keys for other model providers.{'\n\n'}This is helpful for throughput and latency benchmarking.
             </Text>
             
             <XStack alignItems="center" marginBottom={8}>
@@ -102,7 +106,7 @@ export function SettingsSheet({
                 flex={1}
                 size="$4" 
                 marginTop={8}
-                marginBottom={16}
+                marginBottom={0}
                 disabled={hasOpenAIKey}
                 opacity={hasOpenAIKey ? 0.6 : 1}
                 onPress={() => {
@@ -117,7 +121,7 @@ export function SettingsSheet({
                 <Button
                   marginLeft={8}
                   marginTop={8}
-                  marginBottom={16}
+                  marginBottom={0}
                   size="$4"
                   theme="red"
                   icon={Trash}

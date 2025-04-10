@@ -1,13 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Message } from './openai';
-
+import { Message } from '@/components/ChatMessage';
+import { Model } from '@/services/models';
 // Conversation structure
 export interface Conversation {
   id: string;
   title: string;
   messages: Message[];
   lastUpdated: number;
-  modelId: string;
+  model: Model;
 }
 
 // Store structure - a simple dictionary of conversations by ID
