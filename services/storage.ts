@@ -20,6 +20,7 @@ const STORAGE_KEY = '@cactus_conversations';
 const LAST_MODEL_KEY = '@last_used_model';
 const OPENAI_API_KEY = '@cactus_openai_api_key';
 const ANTHROPIC_API_KEY = '@cactus_anthropic_api_key';
+const GEMINI_API_KEY = '@cactus_gemini_api_key';
 
 // Save a single conversation
 export async function saveConversation(conversation: Conversation): Promise<void> {
@@ -150,3 +151,29 @@ export async function deleteAnthropicKey(): Promise<void> {
     console.error('Error deleting Anthropic key:', error);
   }
 } 
+
+export async function saveGeminiKey(key: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(GEMINI_API_KEY, key);
+    console.log('Gemini key saved:', key);
+  } catch (error) {
+    console.error('Error saving Gemini key:', error);
+  }
+}
+
+export async function getGeminiKey(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(GEMINI_API_KEY);
+  } catch (error) {
+    console.error('Error loading Gemini key:', error);
+    return null;
+  }
+}
+
+export async function deleteGeminiKey(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(GEMINI_API_KEY);
+  } catch (error) {
+    console.error('Error deleting Gemini key:', error);
+  }
+}

@@ -3,10 +3,12 @@ import { useState } from 'react'
 import { Modal, View, TouchableWithoutFeedback } from 'react-native'
 import OpenAI from 'openai'
 import { Anthropic } from '@anthropic-ai/sdk'
+import {GoogleGenAI} from '@google/genai';
+
 
 interface ApiKeyDialogProps {
   open: boolean
-  provider: 'OpenAI' | 'Anthropic'
+  provider: 'OpenAI' | 'Anthropic' | 'Google'
   onClose: () => void
   onSave: (key: string) => void
 }
@@ -58,7 +60,27 @@ export function ApiKeyDialog({ open, provider, onClose, onSave }: ApiKeyDialogPr
       setIsValidating(false)
     }
   }
-  
+
+  const validateGeminiKey = async (key: string): Promise<boolean> => {
+    try {
+      setIsValidating(true)
+      setErrorMessage('')
+      
+      const genAI = new GoogleGenAI({apiKey: key});
+      
+      // Make a simple models request to validate the key
+      const d = await genAI.models.get({model: 'gemini-2.0-flash'})
+      console.log(d)
+      return true
+    } catch (error) { 
+      console.error('Gemini validation error:', error)
+      setErrorMessage('Invalid API key. Please check and try again.')
+      return false
+    } finally {
+      setIsValidating(false)
+    }
+  }
+
   const handleSave = async () => {
     if (!apiKey.trim()) {
       setErrorMessage('Please enter an API key')
@@ -71,6 +93,8 @@ export function ApiKeyDialog({ open, provider, onClose, onSave }: ApiKeyDialogPr
       isValid = await validateOpenAIKey(apiKey.trim())
     } else if (provider === 'Anthropic') {
       isValid = await validateAnthropicKey(apiKey.trim())
+    } else if (provider === 'Google') {
+      isValid = await validateGeminiKey(apiKey.trim())
     }
     
     if (isValid) {

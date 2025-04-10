@@ -23,10 +23,14 @@ import {
   getOpenAIKey,
   getAnthropicKey,
   deleteOpenAIKey,
-  deleteAnthropicKey
+  deleteAnthropicKey,
+  saveGeminiKey,
+  getGeminiKey,
+  deleteGeminiKey
 } from '../services/storage';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import { Message } from '@/components/ChatMessage';
+import { streamGeminiCompletion } from '../services/gemini';
 
 export default function ChatScreen() {
   const [open, setOpen] = useState(false);
@@ -42,8 +46,10 @@ export default function ChatScreen() {
   const [allConversations, setAllConversations] = useState<Conversation[]>([]);
   const [openAIDialogOpen, setOpenAIDialogOpen] = useState(false);
   const [anthropicDialogOpen, setAnthropicDialogOpen] = useState(false);
+  const [geminiDialogOpen, setGeminiDialogOpen] = useState(false);
   const [hasOpenAIKey, setHasOpenAIKey] = useState(false);
   const [hasAnthropicKey, setHasAnthropicKey] = useState(false);
+  const [hasGeminiKey, setHasGeminiKey] = useState(false);
   const scrollViewRef = useRef<any>(null);
 
   // Load API keys and update model availability
@@ -51,10 +57,10 @@ export default function ChatScreen() {
     const loadApiKeys = async () => {
       const openAIKey = await getOpenAIKey();
       const anthropicKey = await getAnthropicKey();
-      
+      const geminiKey = await getGeminiKey();
       setHasOpenAIKey(!!openAIKey);
       setHasAnthropicKey(!!anthropicKey);
-      
+      setHasGeminiKey(!!geminiKey);
       // Update available models based on API keys
       const updatedModels = await refreshModelAvailability();
       setAvailableModels(updatedModels);
@@ -71,7 +77,7 @@ export default function ChatScreen() {
     };
     
     loadApiKeys();
-  }, [hasOpenAIKey, hasAnthropicKey]);
+  }, [hasOpenAIKey, hasAnthropicKey, hasGeminiKey]);
 
   // Load conversations list
   useEffect(() => {
@@ -101,7 +107,7 @@ export default function ChatScreen() {
       if (conversation) {
         setMessages(conversation.messages);
         // Set model from conversation if available
-        const model = initialModels.find(m => m.value === conversation.modelId);
+        const model = initialModels.find(m => m.value === conversation.model.value);
         if (model && !model.disabled) {
           setSelectedModel(model);
           setValue(model.value);
@@ -181,6 +187,17 @@ export default function ChatScreen() {
     setAnthropicDialogOpen(false);
   };
 
+  const handleConnectGemini = () => {
+    setSettingsOpen(false);
+    setGeminiDialogOpen(true);
+  };
+  
+  const handleSaveGeminiKey = async (key: string) => {
+    await saveGeminiKey(key);
+    setHasGeminiKey(true);
+    setGeminiDialogOpen(false);
+  };
+
   const handleDeleteOpenAIKey = () => {
     Alert.alert(
       "Delete OpenAI Key", 
@@ -217,6 +234,27 @@ export default function ChatScreen() {
           onPress: async () => {
             await deleteAnthropicKey();
             setHasAnthropicKey(false);
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeleteGeminiKey = () => {
+    Alert.alert(
+      "Delete Gemini Key", 
+      "Are you sure you want to remove your Gemini API key?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await deleteGeminiKey();
+            setHasGeminiKey(false);
           }
         }
       ]
@@ -276,6 +314,7 @@ export default function ChatScreen() {
             setMessages(prev => {
               const updated = [...prev];
               const lastMessage = updated[updated.length - 1];
+              lastMessage.text = lastMessage.text.trimEnd();
               lastMessage.metrics = modelMetrics;
               saveCurrentConversation(updated);
               return updated;
@@ -304,6 +343,7 @@ export default function ChatScreen() {
             setMessages(prev => {
               const updated = [...prev];
               const lastMessage = updated[updated.length - 1];
+              lastMessage.text = lastMessage.text.trimEnd();
               lastMessage.metrics = modelMetrics;
               saveCurrentConversation(updated);
               return updated;
@@ -327,6 +367,35 @@ export default function ChatScreen() {
           });
           setIsStreaming(false);
         }, 1000);
+      } else if (selectedModel.provider === 'google') {
+        const result = await streamGeminiCompletion(
+          updatedMessages,
+          selectedModel.value,
+          (streamText: string) => {
+            // Update the assistant message with streamed content
+            setMessages(prev => {
+              const updated = [...prev];
+              const lastMessage = updated[updated.length - 1];
+              if (!lastMessage.isUser) {
+                lastMessage.text = streamText;
+              }
+              return updated;
+            });
+          },
+          (modelMetrics: ModelMetrics) => {
+            // Final update when streaming completes
+            setIsStreaming(false);  
+            // Save the updated conversation
+            setMessages(prev => {
+              const updated = [...prev];
+              const lastMessage = updated[updated.length - 1];
+              lastMessage.text = lastMessage.text.trimEnd();
+              lastMessage.metrics = modelMetrics;
+              saveCurrentConversation(updated);
+              return updated;
+            });
+          }
+        );
       }
     } catch (error) {
       console.error('Error in chat:', error);
@@ -436,10 +505,13 @@ export default function ChatScreen() {
         onOpenChange={setSettingsOpen}
         onConnectOpenAI={handleConnectOpenAI}
         onConnectAnthropic={handleConnectAnthropic}
+        onConnectGemini={handleConnectGemini}
         onDeleteOpenAI={handleDeleteOpenAIKey}
         onDeleteAnthropic={handleDeleteAnthropicKey}
+        onDeleteGemini={handleDeleteGeminiKey}
         hasOpenAIKey={hasOpenAIKey}
         hasAnthropicKey={hasAnthropicKey}
+        hasGeminiKey={hasGeminiKey}
       />
       
       <ApiKeyDialog
@@ -454,6 +526,13 @@ export default function ChatScreen() {
         provider="Anthropic"
         onClose={() => setAnthropicDialogOpen(false)}
         onSave={handleSaveAnthropicKey}
+      />
+
+      <ApiKeyDialog
+        open={geminiDialogOpen}
+        provider="Google"
+        onClose={() => setGeminiDialogOpen(false)}
+        onSave={handleSaveGeminiKey}
       />
     </SafeAreaView>
   );

@@ -12,6 +12,9 @@ interface SettingsSheetProps {
   onDeleteAnthropic?: () => void
   hasOpenAIKey: boolean
   hasAnthropicKey: boolean
+  hasGeminiKey: boolean
+  onConnectGemini: () => void
+  onDeleteGemini: () => void
 }
 
 export function SettingsSheet({ 
@@ -22,7 +25,10 @@ export function SettingsSheet({
   onDeleteOpenAI,
   onDeleteAnthropic,
   hasOpenAIKey,
-  hasAnthropicKey
+  hasAnthropicKey,
+  hasGeminiKey,
+  onConnectGemini,
+  onDeleteGemini
 }: SettingsSheetProps) {
   // Fade-in animation for overlay
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -153,6 +159,33 @@ export function SettingsSheet({
                   theme="red"
                   icon={Trash}
                   onPress={onDeleteAnthropic}
+                />
+              )}
+            </XStack>
+
+            <XStack alignItems="center" marginBottom={8}>
+              <Button 
+                flex={1}
+                size="$4" 
+                marginTop={8}
+                disabled={hasGeminiKey}
+                opacity={hasGeminiKey ? 0.6 : 1}
+                onPress={() => {
+                  onConnectGemini();
+                }}
+                icon={hasGeminiKey ? Check : undefined}
+              >
+                {hasGeminiKey ? 'Connected to Gemini' : 'Connect Gemini'}
+              </Button>
+              
+              {hasGeminiKey && onDeleteGemini && (
+                <Button
+                  marginLeft={8}
+                  marginTop={8}
+                  size="$4"
+                  theme="red"
+                  icon={Trash}
+                  onPress={onDeleteGemini}
                 />
               )}
             </XStack>
