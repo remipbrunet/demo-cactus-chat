@@ -8,7 +8,7 @@ import { ModelPicker } from '../components/ModelPicker';
 import { ConversationSidebar } from '../components/ConversationSidebar';
 import { SettingsSheet } from '../components/SettingsSheet';
 import { ApiKeyDialog } from '../components/ApiKeyDialog';
-import { Message, generateUniqueId, streamChatCompletion } from '../services/openai';
+import { generateUniqueId, streamChatCompletion } from '../services/openai';
 import { streamAnthropicCompletion } from '../services/anthropic';
 import { Model, models as initialModels, refreshModelAvailability } from '../services/models';
 import { 
@@ -26,6 +26,7 @@ import {
   deleteAnthropicKey
 } from '../services/storage';
 import { ModelMetrics } from '@/utils/modelMetrics';
+import { Message } from '@/components/ChatMessage';
 
 export default function ChatScreen() {
   const [open, setOpen] = useState(false);
@@ -280,17 +281,6 @@ export default function ChatScreen() {
           }
         );
         
-        if (result && 'metrics' in result) {
-          // Update message with metrics
-          setMessages(prev => {
-            const updated = [...prev];
-            const lastMessage = updated[updated.length - 1];
-            if (!lastMessage.isUser) {
-              lastMessage.metrics = result.metrics;
-            }
-            return updated;
-          });
-        }
       } else if (selectedModel.provider === 'anthropic') {
         const result = await streamAnthropicCompletion(
           updatedMessages,
@@ -305,27 +295,20 @@ export default function ChatScreen() {
               return updated;
             });
           },
-          () => {
+          (modelMetrics: ModelMetrics) => {
+            // Final update when streaming completes
             setIsStreaming(false);
             // Save the updated conversation
             setMessages(prev => {
-              saveCurrentConversation(prev);
-              return prev;
+              const updated = [...prev];
+              const lastMessage = updated[updated.length - 1];
+              lastMessage.metrics = modelMetrics;
+              saveCurrentConversation(updated);
+              return updated;
             });
           }
         );
-        
-        if (result && 'metrics' in result) {
-          // Update message with metrics
-          setMessages(prev => {
-            const updated = [...prev];
-            const lastMessage = updated[updated.length - 1];
-            if (!lastMessage.isUser) {
-              lastMessage.metrics = result.metrics;
-            }
-            return updated;
-          });
-        }
+  
       } else if (selectedModel.provider === 'cactus') {
         // Future implementation for Cactus provider
         setTimeout(() => {
