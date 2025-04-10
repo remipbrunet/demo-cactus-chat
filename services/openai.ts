@@ -1,4 +1,4 @@
-import { getOpenAIKey } from './storage';
+import { getApiKey } from './storage';
 import { ModelMetrics } from '../utils/modelMetrics';
 import EventSource from 'react-native-sse';
 import { Message } from '../components/ChatMessage';
@@ -11,7 +11,7 @@ export async function streamChatCompletion(
   streaming: boolean = true
 ) {
   try {
-    const apiKey = await getOpenAIKey();
+    const apiKey = await getApiKey('openai');
     if (!apiKey) {
       throw new Error('OpenAI API key not found. Please add your API key in settings.');
     }

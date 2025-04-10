@@ -73,7 +73,7 @@ export function ConversationSidebar({
               <Button
                 icon={Plus}
                 size="$2"
-                circular
+                chromeless
                 onPress={() => {
                   onNewConversation();
                   onClose();

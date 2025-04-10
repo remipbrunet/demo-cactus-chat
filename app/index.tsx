@@ -18,15 +18,9 @@ import {
   saveLastUsedModel, 
   getLastUsedModel,
   getConversations,
-  saveOpenAIKey,
-  saveAnthropicKey,
-  getOpenAIKey,
-  getAnthropicKey,
-  deleteOpenAIKey,
-  deleteAnthropicKey,
-  saveGeminiKey,
-  getGeminiKey,
-  deleteGeminiKey
+  getApiKey,
+  saveApiKey,
+  deleteApiKey
 } from '../services/storage';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import { Message } from '@/components/ChatMessage';
@@ -55,9 +49,9 @@ export default function ChatScreen() {
   // Load API keys and update model availability
   useEffect(() => {
     const loadApiKeys = async () => {
-      const openAIKey = await getOpenAIKey();
-      const anthropicKey = await getAnthropicKey();
-      const geminiKey = await getGeminiKey();
+      const openAIKey = await getApiKey('openai');
+      const anthropicKey = await getApiKey('anthropic');
+      const geminiKey = await getApiKey('gemini');
       setHasOpenAIKey(!!openAIKey);
       setHasAnthropicKey(!!anthropicKey);
       setHasGeminiKey(!!geminiKey);
@@ -176,13 +170,13 @@ export default function ChatScreen() {
   };
   
   const handleSaveOpenAIKey = async (key: string) => {
-    await saveOpenAIKey(key);
+    await saveApiKey('openai', key);
     setHasOpenAIKey(true);
     setOpenAIDialogOpen(false);
   };
   
   const handleSaveAnthropicKey = async (key: string) => {
-    await saveAnthropicKey(key);
+    await saveApiKey('anthropic', key);
     setHasAnthropicKey(true);
     setAnthropicDialogOpen(false);
   };
@@ -193,7 +187,7 @@ export default function ChatScreen() {
   };
   
   const handleSaveGeminiKey = async (key: string) => {
-    await saveGeminiKey(key);
+    await saveApiKey('gemini', key);
     setHasGeminiKey(true);
     setGeminiDialogOpen(false);
   };
@@ -211,7 +205,7 @@ export default function ChatScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await deleteOpenAIKey();
+            await deleteApiKey('openai');
             setHasOpenAIKey(false);
           }
         }
@@ -232,7 +226,7 @@ export default function ChatScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await deleteAnthropicKey();
+            await deleteApiKey('anthropic');
             setHasAnthropicKey(false);
           }
         }
@@ -253,7 +247,7 @@ export default function ChatScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await deleteGeminiKey();
+            await deleteApiKey('gemini');
             setHasGeminiKey(false);
           }
         }
@@ -446,7 +440,7 @@ export default function ChatScreen() {
           >
             <Button 
               icon={Menu} 
-              circular 
+              // circular 
               size="$2" 
               chromeless 
               onPress={() => {
@@ -465,7 +459,7 @@ export default function ChatScreen() {
             />
             <Button 
               icon={Settings} 
-              circular 
+              // circular 
               size="$2" 
               chromeless 
               onPress={() => setSettingsOpen(true)}

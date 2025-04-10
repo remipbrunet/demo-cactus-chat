@@ -1,4 +1,4 @@
-import { getAnthropicKey } from './storage';
+import { getApiKey } from './storage';  
 import { Message } from '@/components/ChatMessage';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import EventSource from 'react-native-sse';
@@ -11,7 +11,7 @@ export async function streamAnthropicCompletion(
   streaming: boolean = true
 ) {
   try {
-    const apiKey = await getAnthropicKey();
+    const apiKey = await getApiKey('anthropic');
     if (!apiKey) {
       throw new Error('Anthropic API key not found. Please add your API key in settings.');
     }

@@ -1,4 +1,4 @@
-import { getOpenAIKey, getAnthropicKey, getGeminiKey } from './storage';
+import { getApiKey } from './storage';
 
 export interface Model {
   value: string;
@@ -9,17 +9,17 @@ export interface Model {
 
 // Check provider availability functions
 export async function isOpenAIAvailable(): Promise<boolean> {
-  const key = await getOpenAIKey();
+  const key = await getApiKey('openai');
   return !!key;
 }
 
 export async function isAnthropicAvailable(): Promise<boolean> {
-  const key = await getAnthropicKey();
+  const key = await getApiKey('anthropic');
   return !!key;
 }
 
 export async function isGeminiAvailable(): Promise<boolean> {
-  const key = await getGeminiKey();
+  const key = await getApiKey('gemini');
   return !!key;
 }
 

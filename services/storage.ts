@@ -97,83 +97,32 @@ export async function getLastUsedModel(): Promise<string | null> {
   }
 }
 
-// API Key Management
+function fetchProviderKeyStoreName(provider: string): string {
+  return `@cactus_${provider.toLowerCase()}_api_key`;
+}
 
-// Save API keys
-export async function saveOpenAIKey(key: string): Promise<void> {
+export async function saveApiKey(provider: string, key: string): Promise<void> {
   try {
-    await AsyncStorage.setItem(OPENAI_API_KEY, key);
+    await AsyncStorage.setItem(fetchProviderKeyStoreName(provider), key);
+    console.log(`${provider} key saved`);
   } catch (error) {
-    console.error('Error saving OpenAI key:', error);
+    console.error(`Error saving ${provider} key:`, error);
   }
 }
 
-export async function saveAnthropicKey(key: string): Promise<void> {
+export async function getApiKey(provider: string): Promise<string | null> {
   try {
-    await AsyncStorage.setItem(ANTHROPIC_API_KEY, key);
+    return await AsyncStorage.getItem(fetchProviderKeyStoreName(provider));
   } catch (error) {
-    console.error('Error saving Anthropic key:', error);
-  }
-}
-
-// Get API keys
-export async function getOpenAIKey(): Promise<string | null> {
-  try {
-    return await AsyncStorage.getItem(OPENAI_API_KEY);
-  } catch (error) {
-    console.error('Error loading OpenAI key:', error);
+    console.error(`Error loading ${provider} key:`, error);
     return null;
   }
 }
 
-export async function getAnthropicKey(): Promise<string | null> {
+export async function deleteApiKey(provider: string): Promise<void> {
   try {
-    return await AsyncStorage.getItem(ANTHROPIC_API_KEY);
+    await AsyncStorage.removeItem(fetchProviderKeyStoreName(provider));
   } catch (error) {
-    console.error('Error loading Anthropic key:', error);
-    return null;
-  }
-}
-
-// Delete API keys
-export async function deleteOpenAIKey(): Promise<void> {
-  try {
-    await AsyncStorage.removeItem(OPENAI_API_KEY);
-  } catch (error) {
-    console.error('Error deleting OpenAI key:', error);
-  }
-}
-
-export async function deleteAnthropicKey(): Promise<void> {
-  try {
-    await AsyncStorage.removeItem(ANTHROPIC_API_KEY);
-  } catch (error) {
-    console.error('Error deleting Anthropic key:', error);
-  }
-} 
-
-export async function saveGeminiKey(key: string): Promise<void> {
-  try {
-    await AsyncStorage.setItem(GEMINI_API_KEY, key);
-    console.log('Gemini key saved:', key);
-  } catch (error) {
-    console.error('Error saving Gemini key:', error);
-  }
-}
-
-export async function getGeminiKey(): Promise<string | null> {
-  try {
-    return await AsyncStorage.getItem(GEMINI_API_KEY);
-  } catch (error) {
-    console.error('Error loading Gemini key:', error);
-    return null;
-  }
-}
-
-export async function deleteGeminiKey(): Promise<void> {
-  try {
-    await AsyncStorage.removeItem(GEMINI_API_KEY);
-  } catch (error) {
-    console.error('Error deleting Gemini key:', error);
+    console.error(`Error deleting ${provider} key:`, error);
   }
 }

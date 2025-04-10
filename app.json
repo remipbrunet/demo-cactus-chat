@@ -11,7 +11,11 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.rshemetsubuser.myapp"
+      "bundleIdentifier": "com.rshemetsubuser.myapp",
+      "buildNumber": "3",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {

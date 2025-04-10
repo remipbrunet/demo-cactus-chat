@@ -1,4 +1,4 @@
-import { getGeminiKey } from './storage';
+import { getApiKey } from './storage';
 import { Message } from '@/components/ChatMessage';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import EventSource from 'react-native-sse';
@@ -11,7 +11,7 @@ export async function streamGeminiCompletion(
   streaming: boolean = true
 ) {
   try {
-    const apiKey = await getGeminiKey();
+    const apiKey = await getApiKey('gemini');
     if (!apiKey) {
       throw new Error('Gemini API key not found. Please add your API key in settings.');
     }
