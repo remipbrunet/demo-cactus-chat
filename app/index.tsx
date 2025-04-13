@@ -8,9 +8,10 @@ import { ModelPicker } from '../components/ModelPicker';
 import { ConversationSidebar } from '../components/ConversationSidebar';
 import { SettingsSheet } from '../components/SettingsSheet';
 import { ApiKeyDialog } from '../components/ApiKeyDialog';
-import { generateUniqueId, streamChatCompletion } from '../services/openai';
-import { streamAnthropicCompletion } from '../services/anthropic';
+// import { generateUniqueId, streamChatCompletion } from '../services/openai';
+// import { streamAnthropicCompletion } from '../services/anthropic';
 import { Model, models as initialModels, refreshModelAvailability } from '../services/models';
+import { sendChatMessage, generateUniqueId } from '@/services/chat';
 import { 
   Conversation, 
   saveConversation, 
@@ -24,7 +25,7 @@ import {
 } from '../services/storage';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import { Message } from '@/components/ChatMessage';
-import { streamGeminiCompletion } from '../services/gemini';
+// import { streamGeminiCompletion } from '../services/gemini';
 
 export default function ChatScreen() {
   const [open, setOpen] = useState(false);
@@ -284,113 +285,142 @@ export default function ChatScreen() {
     const messagesWithAssistant = [...updatedMessages, assistantMessage];
     setMessages(messagesWithAssistant);
     setIsStreaming(true);
-
     try {
-      if (selectedModel.provider === 'openai') {
-        const result = await streamChatCompletion(
-          updatedMessages,
-          selectedModel.value,
-          (streamText: string) => {
-            // Update the assistant message with streamed content
-            setMessages(prev => {
-              const updated = [...prev];
-              const lastMessage = updated[updated.length - 1];
-              if (!lastMessage.isUser) {
-                lastMessage.text = streamText;
-              }
-              return updated;
-            });
-          },
-          (modelMetrics: ModelMetrics) => {
-            // Final update when streaming completes
-            setIsStreaming(false);
-            // Save the updated conversation
-            setMessages(prev => {
-              const updated = [...prev];
-              const lastMessage = updated[updated.length - 1];
-              lastMessage.text = lastMessage.text.trimEnd();
-              lastMessage.metrics = modelMetrics;
-              saveCurrentConversation(updated);
-              return updated;
-            });
-          }
-        );
-        
-      } else if (selectedModel.provider === 'anthropic') {
-        const result = await streamAnthropicCompletion(
-          updatedMessages,
-          selectedModel.value,
-          (streamText: string) => {
-            setMessages(prev => {
-              const updated = [...prev];
-              const lastMessage = updated[updated.length - 1];
-              if (!lastMessage.isUser) {
-                lastMessage.text = streamText;
-              }
-              return updated;
-            });
-          },
-          (modelMetrics: ModelMetrics) => {
-            // Final update when streaming completes
-            setIsStreaming(false);
-            // Save the updated conversation
-            setMessages(prev => {
-              const updated = [...prev];
-              const lastMessage = updated[updated.length - 1];
-              lastMessage.text = lastMessage.text.trimEnd();
-              lastMessage.metrics = modelMetrics;
-              saveCurrentConversation(updated);
-              return updated;
-            });
-          }
-        );
-  
-      } else if (selectedModel.provider === 'cactus') {
-        // Future implementation for Cactus provider
-        setTimeout(() => {
+      await sendChatMessage(
+        updatedMessages,
+        selectedModel,
+        (streamText: string) => {
+          // Update the assistant message with streamed content
           setMessages(prev => {
             const updated = [...prev];
             const lastMessage = updated[updated.length - 1];
             if (!lastMessage.isUser) {
-              lastMessage.text = 'Cactus provider not yet implemented.';
+              lastMessage.text = streamText;
             }
-            
-            // Save the updated conversation
+            return updated;
+          });
+        },
+        (modelMetrics: ModelMetrics) => {
+          // Final update when streaming completes
+          setIsStreaming(false);
+          // Save the updated conversation
+          setMessages(prev => {
+            const updated = [...prev];
+            const lastMessage = updated[updated.length - 1];
+            lastMessage.text = lastMessage.text.trimEnd();
+            lastMessage.metrics = modelMetrics;
             saveCurrentConversation(updated);
             return updated;
           });
-          setIsStreaming(false);
-        }, 1000);
-      } else if (selectedModel.provider === 'google') {
-        const result = await streamGeminiCompletion(
-          updatedMessages,
-          selectedModel.value,
-          (streamText: string) => {
-            // Update the assistant message with streamed content
-            setMessages(prev => {
-              const updated = [...prev];
-              const lastMessage = updated[updated.length - 1];
-              if (!lastMessage.isUser) {
-                lastMessage.text = streamText;
-              }
-              return updated;
-            });
-          },
-          (modelMetrics: ModelMetrics) => {
-            // Final update when streaming completes
-            setIsStreaming(false);  
-            // Save the updated conversation
-            setMessages(prev => {
-              const updated = [...prev];
-              const lastMessage = updated[updated.length - 1];
-              lastMessage.text = lastMessage.text.trimEnd();
-              lastMessage.metrics = modelMetrics;
-              saveCurrentConversation(updated);
-              return updated;
-            });
-          }
-        );
-      }
+        }
+      );
+    // try {
+      // if (selectedModel.provider === 'openai') {
+      //   const result = await streamChatCompletion(
+      //     updatedMessages,
+      //     selectedModel.value,
+      //     (streamText: string) => {
+      //       // Update the assistant message with streamed content
+      //       setMessages(prev => {
+      //         const updated = [...prev];
+      //         const lastMessage = updated[updated.length - 1];
+      //         if (!lastMessage.isUser) {
+      //           lastMessage.text = streamText;
+      //         }
+      //         return updated;
+      //       });
+      //     },
+      //     (modelMetrics: ModelMetrics) => {
+      //       // Final update when streaming completes
+      //       setIsStreaming(false);
+      //       // Save the updated conversation
+      //       setMessages(prev => {
+      //         const updated = [...prev];
+      //         const lastMessage = updated[updated.length - 1];
+      //         lastMessage.text = lastMessage.text.trimEnd();
+      //         lastMessage.metrics = modelMetrics;
+      //         saveCurrentConversation(updated);
+      //         return updated;
+      //       });
+      //     }
+      //   );
+        
+      // } else if (selectedModel.provider === 'anthropic') {
+      //   const result = await streamAnthropicCompletion(
+      //     updatedMessages,
+      //     selectedModel.value,
+      //     (streamText: string) => {
+      //       setMessages(prev => {
+      //         const updated = [...prev];
+      //         const lastMessage = updated[updated.length - 1];
+      //         if (!lastMessage.isUser) {
+      //           lastMessage.text = streamText;
+      //         }
+      //         return updated;
+      //       });
+      //     },
+      //     (modelMetrics: ModelMetrics) => {
+      //       // Final update when streaming completes
+      //       setIsStreaming(false);
+      //       // Save the updated conversation
+      //       setMessages(prev => {
+      //         const updated = [...prev];
+      //         const lastMessage = updated[updated.length - 1];
+      //         lastMessage.text = lastMessage.text.trimEnd();
+      //         lastMessage.metrics = modelMetrics;
+      //         saveCurrentConversation(updated);
+      //         return updated;
+      //       });
+      //     }
+      //   );
+  
+      // } else if (selectedModel.provider === 'cactus') {
+      //   // Future implementation for Cactus provider
+      //   setTimeout(() => {
+      //     setMessages(prev => {
+      //       const updated = [...prev];
+      //       const lastMessage = updated[updated.length - 1];
+      //       if (!lastMessage.isUser) {
+      //         lastMessage.text = 'Cactus provider not yet implemented.';
+      //       }
+            
+      //       // Save the updated conversation
+      //       saveCurrentConversation(updated);
+      //       return updated;
+      //     });
+      //     setIsStreaming(false);
+      //   }, 1000);
+      // } else if (selectedModel.provider === 'google') {
+      //   const result = await streamGeminiCompletion(
+      //     updatedMessages,
+      //     selectedModel.value,
+      //     (streamText: string) => {
+      //       // Update the assistant message with streamed content
+      //       setMessages(prev => {
+      //         const updated = [...prev];
+      //         const lastMessage = updated[updated.length - 1];
+      //         if (!lastMessage.isUser) {
+      //           lastMessage.text = streamText;
+      //         }
+      //         return updated;
+      //       });
+      //     },
+      //     (modelMetrics: ModelMetrics) => {
+      //       // Final update when streaming completes
+      //       setIsStreaming(false);  
+      //       // Save the updated conversation
+      //       setMessages(prev => {
+      //         const updated = [...prev];
+      //         const lastMessage = updated[updated.length - 1];
+      //         lastMessage.text = lastMessage.text.trimEnd();
+      //         lastMessage.metrics = modelMetrics;
+      //         saveCurrentConversation(updated);
+      //         return updated;
+      //       });
+      //     }
+      //   );
+      // }
+      
     } catch (error) {
       console.error('Error in chat:', error);
       setIsStreaming(false);

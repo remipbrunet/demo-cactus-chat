@@ -18,9 +18,9 @@ interface ConversationsStore {
 // Keys for AsyncStorage
 const STORAGE_KEY = '@cactus_conversations';
 const LAST_MODEL_KEY = '@last_used_model';
-const OPENAI_API_KEY = '@cactus_openai_api_key';
-const ANTHROPIC_API_KEY = '@cactus_anthropic_api_key';
-const GEMINI_API_KEY = '@cactus_gemini_api_key';
+// const OPENAI_API_KEY = '@cactus_openai_api_key';
+// const ANTHROPIC_API_KEY = '@cactus_anthropic_api_key';
+// const GEMINI_API_KEY = '@cactus_gemini_api_key';
 
 // Save a single conversation
 export async function saveConversation(conversation: Conversation): Promise<void> {

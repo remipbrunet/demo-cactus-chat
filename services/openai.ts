@@ -3,7 +3,7 @@ import { ModelMetrics } from '../utils/modelMetrics';
 import EventSource from 'react-native-sse';
 import { Message } from '../components/ChatMessage';
 
-export async function streamChatCompletion(
+export async function streamOpenAICompletion(
   messages: Message[],
   model: string,
   onProgress: (text: string) => void,
@@ -103,10 +103,10 @@ export async function streamChatCompletion(
       es.addEventListener('message', listener)
       es.addEventListener('error', listener)
       es.addEventListener('close', listener)
-      return () => {
-        es.removeAllEventListeners()
-        es.close()
-      }
+      // return () => {
+      //   es.removeAllEventListeners()
+      //   es.close()
+      // }
     } else {
       // const response = await openai.chat.completions.create({
       //   model,
