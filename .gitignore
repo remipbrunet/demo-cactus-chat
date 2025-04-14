@@ -8,3 +8,6 @@ android
 
 expo-env.d.ts
 # @end expo-cli
+
+# we now use yarn
+package-lock.json
