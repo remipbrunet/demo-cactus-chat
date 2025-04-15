@@ -3,6 +3,7 @@ import DropDownPicker from 'react-native-dropdown-picker';
 import { Dispatch, SetStateAction } from 'react';
 import { Model, models as defaultModels } from '../services/models';
 import { ViewStyle } from 'react-native';
+import { truncateModelName } from '@/utils/modelUtils';
 
 const dropdownStyles = {
   container: {
@@ -47,7 +48,7 @@ export function ModelPicker({
   models = defaultModels
 }: ModelPickerProps) {
   const items = models.map(model => ({
-    label: model.label,
+    label: truncateModelName(model.label),
     value: model.value,
     disabled: model.disabled
   }));

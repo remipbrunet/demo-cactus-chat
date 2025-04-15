@@ -1,10 +1,13 @@
-import { getApiKey } from './storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getApiKey, getLocalModels, LocalModel } from './storage';
+import * as FileSystem from 'expo-file-system';
 
 export interface Model {
   value: string;
   label: string;
   provider: 'openai' | 'cactus' | 'anthropic' | 'google';
   disabled: boolean;
+  meta?: Record<string, any>;
 }
 
 // Check provider availability functions
@@ -25,12 +28,12 @@ export async function isGeminiAvailable(): Promise<boolean> {
 
 export const models: Model[] = [
   // we use value as the unique identifier for all models
-  {
-    value: 'cactus-7b',
-    label: 'Cactus Private 7B',
-    provider: 'cactus',
-    disabled: true
-  },
+  // {
+  //   value: 'cactus-7b',
+  //   label: 'Cactus Private 7B',
+  //   provider: 'cactus',
+  //   disabled: false
+  // },
   {
     value: 'gpt-4o-mini',
     label: 'GPT-4o Mini',
@@ -65,5 +68,29 @@ export async function refreshModelAvailability(): Promise<Model[]> {
               model.disabled
   }));
   
-  return updatedModels;
+  // Add local models
+  const localModels = await getLocalModels();
+  // const localModelEntries = await Promise.all(
+  //   localModels.map(async model => {
+  //     // Check if file exists
+  //     const fileInfo = await FileSystem.getInfoAsync(model.filePath);
+  //     console.log('fileInfo', new Date().toISOString(), fileInfo);
+  //     return {
+  //       value: `local-${model.id}`,
+  //       label: model.name,
+  //       provider: 'cactus' as const,
+  //       disabled: !fileInfo.exists,
+  //       meta: { filePath: model.filePath, local: true }
+  //     };
+  //   })
+  // );
+  const localModelEntries = localModels.map(model => ({
+    value: `local-${model.id}`,
+    label: model.name,
+    provider: 'cactus' as const,
+    disabled: !model.filePath,
+    meta: { filePath: model.filePath, local: true }
+  }));
+  
+  return [...updatedModels, ...localModelEntries];
 } 

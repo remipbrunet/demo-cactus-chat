@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message } from '@/components/ChatMessage';
 import { Model } from '@/services/models';
+import * as FileSystem from 'expo-file-system';
 // Conversation structure
 export interface Conversation {
   id: string;
@@ -125,4 +126,30 @@ export async function deleteApiKey(provider: string): Promise<void> {
   } catch (error) {
     console.error(`Error deleting ${provider} key:`, error);
   }
+}
+
+// Local model storage
+export type LocalModel = {
+  id: string,
+  name: string, 
+  filePath: string
+};
+
+export const storeLocalModel = (model: LocalModel) => 
+  AsyncStorage.setItem(`local_model_${model.id}`, JSON.stringify(model));
+
+export const getLocalModels = async (): Promise<LocalModel[]> => {
+  const keys = await AsyncStorage.getAllKeys();
+  const models = await AsyncStorage.multiGet(keys.filter(k => k.startsWith('local_model_')));
+  return models.map(([_, val]) => JSON.parse(val as string) as LocalModel);
+};
+
+export const removeLocalModel = (id: string) => {
+  AsyncStorage.getItem(`local_model_${id}`).then((localModel) => {
+    if (localModel) {
+      const model = JSON.parse(localModel) as LocalModel;
+      FileSystem.deleteAsync(model.filePath);
+    }
+    AsyncStorage.removeItem(`local_model_${id}`);
+  });
 }

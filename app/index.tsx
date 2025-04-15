@@ -12,6 +12,7 @@ import { ApiKeyDialog } from '../components/ApiKeyDialog';
 // import { streamAnthropicCompletion } from '../services/anthropic';
 import { Model, models as initialModels, refreshModelAvailability } from '../services/models';
 import { sendChatMessage, generateUniqueId } from '@/services/chat';
+import { ensureLocalModelContext } from '@/utils/localModelContext';
 import { 
   Conversation, 
   saveConversation, 
@@ -46,6 +47,7 @@ export default function ChatScreen() {
   const [hasAnthropicKey, setHasAnthropicKey] = useState(false);
   const [hasGeminiKey, setHasGeminiKey] = useState(false);
   const scrollViewRef = useRef<any>(null);
+  const [localModelsVersion, setLocalModelsVersion] = useState(0);
 
   // Load API keys and update model availability
   useEffect(() => {
@@ -72,7 +74,7 @@ export default function ChatScreen() {
     };
     
     loadApiKeys();
-  }, [hasOpenAIKey, hasAnthropicKey, hasGeminiKey]);
+  }, [hasOpenAIKey, hasAnthropicKey, hasGeminiKey, localModelsVersion]);
 
   // Load conversations list
   useEffect(() => {
@@ -82,7 +84,8 @@ export default function ChatScreen() {
     };
     
     loadConversations();
-  }, [messages]); // Reload when messages change to keep list updated
+  // }, [messages]); // Reload when messages change to keep list updated
+  }, []); // Reload once
 
   // Load initial state
   useEffect(() => {
@@ -143,9 +146,10 @@ export default function ChatScreen() {
     await saveConversation(conversation);
   };
 
-  const handleModelSelect = (model: Model) => {
+  const handleModelSelect = async (model: Model) => {
     setSelectedModel(model);
     saveLastUsedModel(model.value);
+    await ensureLocalModelContext(model.value);
   };
 
   const handleSelectConversation = async (id: string) => {
@@ -310,6 +314,10 @@ export default function ChatScreen() {
             lastMessage.text = lastMessage.text.trimEnd();
             lastMessage.metrics = modelMetrics;
             saveCurrentConversation(updated);
+            getConversations().then((conversations) => {
+              setAllConversations(conversations);
+            });
+            scrollViewRef.current?.scrollToEnd({ animated: true });
             return updated;
           });
         }
@@ -445,6 +453,14 @@ export default function ChatScreen() {
     }, 100);
   };
 
+  // Handle successful model download
+  const handleModelDownloaded = (modelName: string) => {
+    // Increment version to trigger refresh
+    setLocalModelsVersion(prev => prev + 1);
+    // Show alert instead of toast
+    Alert.alert('Success', `Model ${modelName} downloaded successfully`);
+  };
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <ConversationSidebar
@@ -536,6 +552,7 @@ export default function ChatScreen() {
         hasOpenAIKey={hasOpenAIKey}
         hasAnthropicKey={hasAnthropicKey}
         hasGeminiKey={hasGeminiKey}
+        onModelDownloaded={handleModelDownloaded}
       />
       
       <ApiKeyDialog

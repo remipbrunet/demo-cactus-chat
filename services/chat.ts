@@ -1,10 +1,10 @@
 import { streamOpenAICompletion } from './openai';
 import { streamAnthropicCompletion } from './anthropic';
 import { streamGeminiCompletion } from './gemini';
+import { streamLlamaCompletion } from './llama-local';
 import { Message } from '@/components/ChatMessage';
 import { Model } from './models';
 import { ModelMetrics } from '@/utils/modelMetrics';
-
 // Define unified interfaces
 export interface ChatProgressCallback {
   (text: string): void;
@@ -58,7 +58,13 @@ export async function sendChatMessage(
         );
         
       case 'cactus':
-        throw new Error('Cactus provider not yet implemented');
+        return await streamLlamaCompletion(
+          messages, 
+          model.value, 
+          onProgress, 
+          onComplete, 
+          options.streaming
+        );
         
       default:
         throw new Error(`Unknown provider: ${model.provider}`);
