@@ -5,6 +5,18 @@ import { Check, Trash, Download } from '@tamagui/lucide-icons'
 import { LocalModel, getLocalModels, removeLocalModel } from '@/services/storage'
 import { downloadModel, validateModelUrl, truncateModelName } from '@/utils/modelUtils'
 
+// Recommended model for first-time users
+const RECOMMENDED_MODELS = [
+  {
+    name: "SmolLM2 135M Instruct Q8_0",
+    url: "https://huggingface.co/unsloth/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q8_0.gguf"
+  },
+  {
+    name: "gemma 3 1b it Q8_0",
+    url: "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q8_0.gguf"
+  }
+];
+
 interface SettingsSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -60,11 +72,13 @@ export function SettingsSheet({
   };
   
   // Handle model download
-  const handleModelDownload = async () => {
+  const handleModelDownload = async (urlOverride?: string) => {
     setErrorMessage('');
+
+    const urlToDownload = urlOverride || modelUrl;
     
     // Validate URL
-    const validation = validateModelUrl(modelUrl);
+    const validation = validateModelUrl(urlToDownload);
     if (!validation.valid) {
       setErrorMessage(validation.reason || 'Invalid URL');
       return;
@@ -72,7 +86,7 @@ export function SettingsSheet({
     
     try {
       setIsDownloading(true);
-      const model = await downloadModel(modelUrl, setDownloadProgress);
+      const model = await downloadModel(urlToDownload, setDownloadProgress);
       setModelUrl('');
       await loadLocalModels();
       // Notify parent about successful download
@@ -160,7 +174,7 @@ export function SettingsSheet({
             </Text>
 
             <Text fontSize={14} fontWeight="300" textAlign="center" marginBottom={16}>
-              In addition to using local models privately, you can add API keys for other model providers.{'\n\n'}This is helpful for throughput and latency benchmarking.
+              Download and use local models privately or add keys for API providers.{'\n\n'}This is helpful for throughput and latency benchmarking.
             </Text>
 
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -185,7 +199,7 @@ export function SettingsSheet({
                   <Input 
                     flex={1}
                     size="$4"
-                    placeholder="Paste HuggingFace GGUF URL" 
+                    placeholder="Custom HuggingFace GGUF URL" 
                     value={modelUrl}
                     onChangeText={text => {
                       setModelUrl(text);
@@ -210,6 +224,30 @@ export function SettingsSheet({
                   {errorMessage}
                 </Text>
               ) : null}
+
+              {/* recommended models section */}
+              {RECOMMENDED_MODELS.filter(model => !localModels.some(localModel => localModel.name === model.name)).map((model) => (
+                <XStack key={model.name} alignItems="center" marginBottom={8}>
+                  <Button
+                    flex={1}
+                    size="$4"
+                    // icon={Check}
+                    disabled
+                    opacity={0.6}
+                  >
+                    {model.name}
+                  </Button>
+                  <Button
+                    marginLeft={8}
+                    size="$4"
+                    icon={Download}
+                    disabled={isDownloading}
+                    onPress={() => {
+                    handleModelDownload(model.url)
+                  }}
+                  />
+                </XStack>
+              ))} 
               
               {/* List of local models */}
               {localModels.map(model => (
@@ -221,7 +259,8 @@ export function SettingsSheet({
                     disabled
                     opacity={0.6}
                   >
-                    {truncateModelName(model?.name || '')}
+                    {/* {truncateModelName(model?.name || '')} */}
+                    {model.name}
                   </Button>
                   <Button
                     marginLeft={8}
