@@ -285,7 +285,7 @@ export function SettingsSheet({
               </Text>
 
               {(providers).map(provider => (
-                <XStack alignItems="center" marginBottom={8}>
+                <XStack key={provider.name} alignItems="center" marginBottom={8}>
                   <Button 
                   flex={1}
                   size="$4" 

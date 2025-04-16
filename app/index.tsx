@@ -1,4 +1,4 @@
-import { XStack, YStack, Input, Button, ScrollView } from 'tamagui';
+import { XStack, YStack, Input, Button, ScrollView, Spinner } from 'tamagui';
 import { useRef, useState, useEffect } from 'react';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,24 +15,32 @@ import {
   saveConversation, 
   getConversation, 
   saveLastUsedModel, 
-  getLastUsedModel,
   getConversations,
 } from '../services/storage';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import { Message } from '@/components/ChatMessage';
-
+import { useModelContext } from '@/contexts/modelContext';
 export default function ChatScreen() {
   const [open, setOpen] = useState(false);
-  const [value, setValue] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState<Model>(initialModels[0]);
+  // const [value, setValue] = useState<string | null>(null);
+  // const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [modelIsLoading, setModelIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string>(generateUniqueId());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [allConversations, setAllConversations] = useState<Conversation[]>([]);
   const scrollViewRef = useRef<any>(null);
+
+  const { selectedModel } = useModelContext();
+  
+  // Single ref for streaming updates
+  const streamingUpdateRef = useRef<{
+    text: string;
+    frameId: number | null;
+  }>({ text: '', frameId: null });
 
   // Load conversations list
   useEffect(() => {
@@ -47,26 +55,16 @@ export default function ChatScreen() {
   // Load initial state
   useEffect(() => {
     const loadInitialState = async () => {
-      // Load last used model
-      const lastModelId = await getLastUsedModel();
-      if (lastModelId) {
-        const lastModel = initialModels.find(m => m.value === lastModelId);
-        if (lastModel && !lastModel.disabled) {
-          setSelectedModel(lastModel);
-          setValue(lastModelId);
-        }
-      }
       
       // Load conversation
       const conversation = await getConversation(conversationId);
       if (conversation) {
         setMessages(conversation.messages);
         // Set model from conversation if available
-        const model = initialModels.find(m => m.value === conversation.model.value);
-        if (model && !model.disabled) {
-          setSelectedModel(model);
-          setValue(model.value);
-        }
+        // const model = initialModels.find(m => m.value === conversation.model.value);
+        // if (model && !model.disabled) {
+          // setValue(model.value);
+        // }
       } else {
         setMessages([]);
         saveCurrentConversation([]);
@@ -79,6 +77,7 @@ export default function ChatScreen() {
   // Save conversation when messages change
   const saveCurrentConversation = async (currentMessages: Message[]) => {
     if (currentMessages.length === 0) return;
+    if (!selectedModel) return;
     
     // Get title from first user message or use default
     const firstUserMessage = currentMessages.find(m => m.isUser);
@@ -97,15 +96,16 @@ export default function ChatScreen() {
     await saveConversation(conversation);
   };
 
-  const handleModelSelect = async (model: Model) => {
-    setSelectedModel(model);
-    saveLastUsedModel(model.value);
-    await ensureLocalModelContext(model);
-  };
-
-  const handleSelectConversation = async (id: string) => {
-    setConversationId(id);
-  };
+  // const handleModelSelect = async (model: Model) => {
+  //   const newModelSelected = model !== selectedModel
+  //   setSelectedModel(model);
+  //   saveLastUsedModel(model.value);
+  //   if (newModelSelected) {
+  //     setModelIsLoading(true);
+  //     await ensureLocalModelContext(model);
+  //     setModelIsLoading(false);
+  //   }
+  // };
   
   const createNewConversation = () => {
     // Generate a new conversation ID
@@ -117,7 +117,7 @@ export default function ChatScreen() {
 
   const sendMessage = async () => {
     if (!inputText.trim() || isStreaming) return;
-    
+    if (!selectedModel) return;
     // Add user message
     const userMessage: Message = {
       id: generateUniqueId(),
@@ -149,24 +149,39 @@ export default function ChatScreen() {
         updatedMessages,
         selectedModel,
         (streamText: string) => {
-          // Update the assistant message with streamed content
-          setMessages(prev => {
-            const updated = [...prev];
-            const lastMessage = updated[updated.length - 1];
-            if (!lastMessage.isUser) {
-              lastMessage.text = streamText;
-            }
-            return updated;
-          });
+          // Store the latest text
+          streamingUpdateRef.current.text = streamText;
+          
+          // Only schedule a frame if one isn't already pending
+          if (streamingUpdateRef.current.frameId === null) {
+            streamingUpdateRef.current.frameId = requestAnimationFrame(() => {
+              setMessages(prev => {
+                const updated = [...prev];
+                const lastMessage = updated[updated.length - 1];
+                if (!lastMessage.isUser) {
+                  lastMessage.text = streamingUpdateRef.current.text;
+                }
+                return updated;
+              });
+              streamingUpdateRef.current.frameId = null;
+            });
+          }
         },
         (modelMetrics: ModelMetrics) => {
           // Final update when streaming completes
           setIsStreaming(false);
+          
+          // Cancel any pending frame
+          if (streamingUpdateRef.current.frameId !== null) {
+            cancelAnimationFrame(streamingUpdateRef.current.frameId);
+            streamingUpdateRef.current.frameId = null;
+          }
+          
           // Save the updated conversation
           setMessages(prev => {
             const updated = [...prev];
             const lastMessage = updated[updated.length - 1];
-            lastMessage.text = lastMessage.text.trimEnd();
+            lastMessage.text = streamingUpdateRef.current.text.trimEnd();
             lastMessage.metrics = modelMetrics;
             saveCurrentConversation(updated);
             getConversations().then((conversations) => {
@@ -207,7 +222,7 @@ export default function ChatScreen() {
         isOpen={sidebarOpen}
         conversations={allConversations}
         onClose={() => setSidebarOpen(false)}
-        onSelectConversation={handleSelectConversation}
+        onSelectConversation={setConversationId}
         onNewConversation={createNewConversation}
         zIndex={1000}
       />
@@ -236,10 +251,11 @@ export default function ChatScreen() {
             />
             <ModelPicker
               open={open}
-              value={value}
+              setModelIsLoading={setModelIsLoading}
+              // value={value}
               setOpen={setOpen}
-              setValue={setValue}
-              onSelectModel={handleModelSelect}
+              // setValue={setValue}
+              // onSelectModel={handleModelSelect}
               zIndex={50}
               // models={availableModels}
             />
@@ -270,12 +286,17 @@ export default function ChatScreen() {
               placeholder="Message..."
               onSubmitEditing={sendMessage}
             />
-            <Button 
-              icon={Send}
-              onPress={sendMessage}
-              disabled={isStreaming || !inputText.trim()}
-              opacity={isStreaming || !inputText.trim() ? 0.5 : 1}
-            />
+            {(!isStreaming && !modelIsLoading) ?
+              <Button 
+                icon={Send}
+                onPress={sendMessage}
+                disabled={!selectedModel || inputText.trim() === ''}
+                opacity={!selectedModel || inputText.trim() === '' ? 0.25 : 1}
+              /> :
+              <YStack padding="$3" alignItems="center" justifyContent="center">
+                <Spinner size="small" />
+              </YStack>
+            }
           </XStack>
         </YStack>
       </KeyboardAvoidingView>

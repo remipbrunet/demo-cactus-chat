@@ -3,6 +3,8 @@ import { Model, refreshModelAvailability, isOpenAIAvailable, isAnthropicAvailabl
 
 interface ModelContextType {
     availableModels: Model[];
+    selectedModel: Model | null;
+    setSelectedModel: (model: Model | null) => void;
     refreshModels: () => void;
     hasOpenAIKey: boolean;
     hasAnthropicKey: boolean;
@@ -11,6 +13,8 @@ interface ModelContextType {
 
 const ModelContext = createContext<ModelContextType>({
     availableModels: [],
+    selectedModel: null,
+    setSelectedModel: () => {},
     refreshModels: () => {},
     hasOpenAIKey: false,
     hasAnthropicKey: false,
@@ -19,6 +23,7 @@ const ModelContext = createContext<ModelContextType>({
 
 export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   const [availableModels, setAvailableModels] = useState<Model[]>([]);
+  const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [modelsVersion, setModelsVersion] = useState<number>(0);
   const [hasOpenAIKey, setHasOpenAIKey] = useState<boolean>(false);
   const [hasAnthropicKey, setHasAnthropicKey] = useState<boolean>(false);
@@ -29,10 +34,8 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   useEffect(() => {
-    console.log('refreshing model availability');
     refreshModelAvailability().then((models) => {
       setAvailableModels(models);
-      console.log('models refreshed', models.filter((model) => !model.disabled));
     });
     isOpenAIAvailable().then((hasKey) => {
       setHasOpenAIKey(hasKey);
@@ -46,7 +49,7 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   }, [modelsVersion])
 
   return (
-  <ModelContext.Provider value={{ availableModels, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey }}>
+  <ModelContext.Provider value={{ availableModels, selectedModel, setSelectedModel, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey }}>
     {children}
   </ModelContext.Provider>
   )
