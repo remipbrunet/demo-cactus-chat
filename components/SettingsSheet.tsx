@@ -2,10 +2,9 @@ import { YStack, Button, Text, XStack, Input, Progress } from 'tamagui'
 import { Modal, View, TouchableWithoutFeedback, Animated, ScrollView, Alert } from 'react-native'
 import { useEffect, useRef, useState } from 'react'
 import { Check, Trash, Download } from '@tamagui/lucide-icons'
-import { deleteApiKey, getLocalModels, removeLocalModel } from '@/services/storage'
-import { downloadModel, validateModelUrl, truncateModelName } from '@/utils/modelUtils'
+import { deleteApiKey, removeLocalModel } from '@/services/storage'
+import { downloadModel, validateModelUrl } from '@/utils/modelUtils'
 import { useModelContext } from '@/contexts/modelContext'
-import { saveApiKey } from '@/services/storage'
 import { ApiKeyDialog } from './ApiKeyDialog'
 import { Provider } from '@/services/models'
 
@@ -24,18 +23,16 @@ const RECOMMENDED_MODELS = [
 interface SettingsSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+}
 
-  // onConnectOpenAI: () => void
-  // onConnectAnthropic: () => void
-  // onConnectGemini: () => void
+interface ExtendedProviderType {
+  name: Provider
+  hasKey: boolean
 }
 
 export function SettingsSheet({ 
   open, 
   onOpenChange,
-  // onConnectOpenAI,
-  // onConnectAnthropic,
-  // onConnectGemini,
 }: SettingsSheetProps) {
   // Model URL input state
   const { availableModels, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey } = useModelContext();
@@ -49,6 +46,20 @@ export function SettingsSheet({
   // Slide-up animation for the sheet
   const slideAnim = useRef(new Animated.Value(300)).current;
 
+  const providers: ExtendedProviderType[] = [
+    {
+      name: 'OpenAI',
+      hasKey: hasOpenAIKey
+    },
+    {
+      name: 'Anthropic',
+      hasKey: hasAnthropicKey
+    },
+    {
+      name: 'Google',
+      hasKey: hasGeminiKey
+    }
+  ]
   const handleModelDownload = async (urlOverride?: string) => {
     setErrorMessage('');
 
@@ -125,7 +136,7 @@ export function SettingsSheet({
   
   return (
     <Modal
-      animationType="none"
+      animationType="fade"
       transparent={true}
       visible={open}
       onRequestClose={() => onOpenChange(false)}
@@ -272,24 +283,25 @@ export function SettingsSheet({
               <Text fontSize={16} fontWeight="500" marginTop={16} marginBottom={8}>
                 API Providers
               </Text>
-              
-              <XStack alignItems="center" marginBottom={8}>
-                <Button 
+
+              {(providers).map(provider => (
+                <XStack alignItems="center" marginBottom={8}>
+                  <Button 
                   flex={1}
                   size="$4" 
                   marginTop={8}
                   marginBottom={0}
-                  disabled={hasOpenAIKey}
-                  opacity={hasOpenAIKey ? 0.6 : 1}
+                  disabled={provider.hasKey}
+                  opacity={provider.hasKey ? 0.6 : 1}
                   onPress={() => {
-                    setApiKeyDialogProvider('OpenAI');
+                    setApiKeyDialogProvider(provider.name);
                   }}
-                  icon={hasOpenAIKey ? Check : undefined}
+                  icon={provider.hasKey ? Check : undefined}
                 >
-                  {hasOpenAIKey ? 'Connected to OpenAI' : 'Connect OpenAI'}
+                  {provider.hasKey ? `Connected to ${provider.name}` : `Connect ${provider.name}`}
                 </Button>
                 
-                {hasOpenAIKey && (
+                {provider.hasKey && (
                   <Button
                     marginLeft={8}
                     marginTop={8}
@@ -297,64 +309,11 @@ export function SettingsSheet({
                     size="$4"
                     theme="red"
                     icon={Trash}
-                    onPress={() =>handleDeleteApiKey('OpenAI')}
+                    onPress={() =>handleDeleteApiKey(provider.name)}
                   />
                 )}
               </XStack>
-              
-              <XStack alignItems="center" marginBottom={8}>
-                <Button 
-                  flex={1}
-                  size="$4" 
-                  marginTop={8}
-                  disabled={hasAnthropicKey}
-                  opacity={hasAnthropicKey ? 0.6 : 1}
-                  onPress={() => {
-                    setApiKeyDialogProvider('Anthropic');
-                  }}
-                  icon={hasAnthropicKey ? Check : undefined}
-                >
-                  {hasAnthropicKey ? 'Connected to Anthropic' : 'Connect Anthropic'}
-                </Button>
-                
-                {hasAnthropicKey && (
-                  <Button
-                    marginLeft={8}
-                    marginTop={8}
-                    size="$4"
-                    theme="red"
-                    icon={Trash}
-                    onPress={() =>handleDeleteApiKey('Anthropic')}
-                  />
-                )}
-              </XStack>
-
-              <XStack alignItems="center" marginBottom={8}>
-                <Button 
-                  flex={1}
-                  size="$4" 
-                  marginTop={8}
-                  disabled={hasGeminiKey}
-                  opacity={hasGeminiKey ? 0.6 : 1}
-                  onPress={() => {
-                    setApiKeyDialogProvider('Google');
-                  }}
-                  icon={hasGeminiKey ? Check : undefined}
-                >
-                  {hasGeminiKey ? 'Connected to Gemini' : 'Connect Gemini'}
-                </Button>
-                
-                {hasGeminiKey && (
-                  <Button
-                    marginLeft={8}
-                    marginTop={8}
-                    size="$4"
-                    theme="red"
-                    icon={Trash}
-                    onPress={() =>handleDeleteApiKey('Google')}
-                  />
-                )}
-              </XStack>
+              ))}
               
             </ScrollView>
           </YStack>
