@@ -1,16 +1,13 @@
 import { XStack, YStack, Input, Button, ScrollView } from 'tamagui';
 import { useRef, useState, useEffect } from 'react';
-import { KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Menu, Settings, Send } from '@tamagui/lucide-icons';
 import { ChatMessage } from '../components/ChatMessage';
 import { ModelPicker } from '../components/ModelPicker';
 import { ConversationSidebar } from '../components/ConversationSidebar';
 import { SettingsSheet } from '../components/SettingsSheet';
-import { ApiKeyDialog } from '../components/ApiKeyDialog';
-// import { generateUniqueId, streamChatCompletion } from '../services/openai';
-// import { streamAnthropicCompletion } from '../services/anthropic';
-import { Model, models as initialModels, refreshModelAvailability } from '../services/models';
+import { Model, models as initialModels } from '../services/models';
 import { sendChatMessage, generateUniqueId } from '@/services/chat';
 import { ensureLocalModelContext } from '@/utils/localModelContext';
 import { 
@@ -20,19 +17,14 @@ import {
   saveLastUsedModel, 
   getLastUsedModel,
   getConversations,
-  getApiKey,
-  saveApiKey,
-  deleteApiKey
 } from '../services/storage';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import { Message } from '@/components/ChatMessage';
-// import { streamGeminiCompletion } from '../services/gemini';
 
 export default function ChatScreen() {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<Model>(initialModels[0]);
-  const [availableModels, setAvailableModels] = useState<Model[]>(initialModels);
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -40,41 +32,7 @@ export default function ChatScreen() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [allConversations, setAllConversations] = useState<Conversation[]>([]);
-  const [openAIDialogOpen, setOpenAIDialogOpen] = useState(false);
-  const [anthropicDialogOpen, setAnthropicDialogOpen] = useState(false);
-  const [geminiDialogOpen, setGeminiDialogOpen] = useState(false);
-  const [hasOpenAIKey, setHasOpenAIKey] = useState(false);
-  const [hasAnthropicKey, setHasAnthropicKey] = useState(false);
-  const [hasGeminiKey, setHasGeminiKey] = useState(false);
   const scrollViewRef = useRef<any>(null);
-  const [localModelsVersion, setLocalModelsVersion] = useState(0);
-
-  // Load API keys and update model availability
-  useEffect(() => {
-    const loadApiKeys = async () => {
-      const openAIKey = await getApiKey('openai');
-      const anthropicKey = await getApiKey('anthropic');
-      const geminiKey = await getApiKey('gemini');
-      setHasOpenAIKey(!!openAIKey);
-      setHasAnthropicKey(!!anthropicKey);
-      setHasGeminiKey(!!geminiKey);
-      // Update available models based on API keys
-      const updatedModels = await refreshModelAvailability();
-      setAvailableModels(updatedModels);
-      
-      // If the currently selected model is now disabled, select the first available model
-      if (updatedModels.find(m => m.value === selectedModel.value)?.disabled) {
-        const firstAvailableModel = updatedModels.find(m => !m.disabled);
-        if (firstAvailableModel) {
-          setSelectedModel(firstAvailableModel);
-          setValue(firstAvailableModel.value);
-          await saveLastUsedModel(firstAvailableModel.value);
-        }
-      }
-    };
-    
-    loadApiKeys();
-  }, [hasOpenAIKey, hasAnthropicKey, hasGeminiKey, localModelsVersion]);
 
   // Load conversations list
   useEffect(() => {
@@ -84,7 +42,6 @@ export default function ChatScreen() {
     };
     
     loadConversations();
-  // }, [messages]); // Reload when messages change to keep list updated
   }, []); // Reload once
 
   // Load initial state
@@ -111,12 +68,6 @@ export default function ChatScreen() {
           setValue(model.value);
         }
       } else {
-        // Create a new conversation with welcome message
-        // const welcomeMessage: Message = {
-        //   id: generateUniqueId(),
-        //   isUser: false,
-        //   text: 'Hello! How can I help you today?'
-        // };
         setMessages([]);
         saveCurrentConversation([]);
       }
@@ -149,7 +100,7 @@ export default function ChatScreen() {
   const handleModelSelect = async (model: Model) => {
     setSelectedModel(model);
     saveLastUsedModel(model.value);
-    await ensureLocalModelContext(model.value);
+    await ensureLocalModelContext(model);
   };
 
   const handleSelectConversation = async (id: string) => {
@@ -162,102 +113,6 @@ export default function ChatScreen() {
     // Reset the conversation
     setConversationId(newId);
     setMessages([]);
-  };
-
-  const handleConnectOpenAI = () => {
-    setSettingsOpen(false);
-    setOpenAIDialogOpen(true);
-  };
-  
-  const handleConnectAnthropic = () => {
-    setSettingsOpen(false);
-    setAnthropicDialogOpen(true);
-  };
-  
-  const handleSaveOpenAIKey = async (key: string) => {
-    await saveApiKey('openai', key);
-    setHasOpenAIKey(true);
-    setOpenAIDialogOpen(false);
-  };
-  
-  const handleSaveAnthropicKey = async (key: string) => {
-    await saveApiKey('anthropic', key);
-    setHasAnthropicKey(true);
-    setAnthropicDialogOpen(false);
-  };
-
-  const handleConnectGemini = () => {
-    setSettingsOpen(false);
-    setGeminiDialogOpen(true);
-  };
-  
-  const handleSaveGeminiKey = async (key: string) => {
-    await saveApiKey('gemini', key);
-    setHasGeminiKey(true);
-    setGeminiDialogOpen(false);
-  };
-
-  const handleDeleteOpenAIKey = () => {
-    Alert.alert(
-      "Delete OpenAI Key", 
-      "Are you sure you want to remove your OpenAI API key?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            await deleteApiKey('openai');
-            setHasOpenAIKey(false);
-          }
-        }
-      ]
-    );
-  };
-  
-  const handleDeleteAnthropicKey = () => {
-    Alert.alert(
-      "Delete Anthropic Key", 
-      "Are you sure you want to remove your Anthropic API key?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            await deleteApiKey('anthropic');
-            setHasAnthropicKey(false);
-          }
-        }
-      ]
-    );
-  };
-
-  const handleDeleteGeminiKey = () => {
-    Alert.alert(
-      "Delete Gemini Key", 
-      "Are you sure you want to remove your Gemini API key?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            await deleteApiKey('gemini');
-            setHasGeminiKey(false);
-          }
-        }
-      ]
-    );
   };
 
   const sendMessage = async () => {
@@ -321,114 +176,7 @@ export default function ChatScreen() {
             return updated;
           });
         }
-      );
-    // try {
-      // if (selectedModel.provider === 'openai') {
-      //   const result = await streamChatCompletion(
-      //     updatedMessages,
-      //     selectedModel.value,
-      //     (streamText: string) => {
-      //       // Update the assistant message with streamed content
-      //       setMessages(prev => {
-      //         const updated = [...prev];
-      //         const lastMessage = updated[updated.length - 1];
-      //         if (!lastMessage.isUser) {
-      //           lastMessage.text = streamText;
-      //         }
-      //         return updated;
-      //       });
-      //     },
-      //     (modelMetrics: ModelMetrics) => {
-      //       // Final update when streaming completes
-      //       setIsStreaming(false);
-      //       // Save the updated conversation
-      //       setMessages(prev => {
-      //         const updated = [...prev];
-      //         const lastMessage = updated[updated.length - 1];
-      //         lastMessage.text = lastMessage.text.trimEnd();
-      //         lastMessage.metrics = modelMetrics;
-      //         saveCurrentConversation(updated);
-      //         return updated;
-      //       });
-      //     }
-      //   );
-        
-      // } else if (selectedModel.provider === 'anthropic') {
-      //   const result = await streamAnthropicCompletion(
-      //     updatedMessages,
-      //     selectedModel.value,
-      //     (streamText: string) => {
-      //       setMessages(prev => {
-      //         const updated = [...prev];
-      //         const lastMessage = updated[updated.length - 1];
-      //         if (!lastMessage.isUser) {
-      //           lastMessage.text = streamText;
-      //         }
-      //         return updated;
-      //       });
-      //     },
-      //     (modelMetrics: ModelMetrics) => {
-      //       // Final update when streaming completes
-      //       setIsStreaming(false);
-      //       // Save the updated conversation
-      //       setMessages(prev => {
-      //         const updated = [...prev];
-      //         const lastMessage = updated[updated.length - 1];
-      //         lastMessage.text = lastMessage.text.trimEnd();
-      //         lastMessage.metrics = modelMetrics;
-      //         saveCurrentConversation(updated);
-      //         return updated;
-      //       });
-      //     }
-      //   );
-  
-      // } else if (selectedModel.provider === 'cactus') {
-      //   // Future implementation for Cactus provider
-      //   setTimeout(() => {
-      //     setMessages(prev => {
-      //       const updated = [...prev];
-      //       const lastMessage = updated[updated.length - 1];
-      //       if (!lastMessage.isUser) {
-      //         lastMessage.text = 'Cactus provider not yet implemented.';
-      //       }
-            
-      //       // Save the updated conversation
-      //       saveCurrentConversation(updated);
-      //       return updated;
-      //     });
-      //     setIsStreaming(false);
-      //   }, 1000);
-      // } else if (selectedModel.provider === 'google') {
-      //   const result = await streamGeminiCompletion(
-      //     updatedMessages,
-      //     selectedModel.value,
-      //     (streamText: string) => {
-      //       // Update the assistant message with streamed content
-      //       setMessages(prev => {
-      //         const updated = [...prev];
-      //         const lastMessage = updated[updated.length - 1];
-      //         if (!lastMessage.isUser) {
-      //           lastMessage.text = streamText;
-      //         }
-      //         return updated;
-      //       });
-      //     },
-      //     (modelMetrics: ModelMetrics) => {
-      //       // Final update when streaming completes
-      //       setIsStreaming(false);  
-      //       // Save the updated conversation
-      //       setMessages(prev => {
-      //         const updated = [...prev];
-      //         const lastMessage = updated[updated.length - 1];
-      //         lastMessage.text = lastMessage.text.trimEnd();
-      //         lastMessage.metrics = modelMetrics;
-      //         saveCurrentConversation(updated);
-      //         return updated;
-      //       });
-      //     }
-      //   );
-      // }
-      
+      );      
     } catch (error) {
       console.error('Error in chat:', error);
       setIsStreaming(false);
@@ -451,14 +199,6 @@ export default function ChatScreen() {
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
-  };
-
-  // Handle successful model download
-  const handleModelDownloaded = (modelName: string) => {
-    // Increment version to trigger refresh
-    setLocalModelsVersion(prev => prev + 1);
-    // Show alert instead of toast
-    Alert.alert('Success', `Model ${modelName} downloaded successfully`);
   };
 
   return (
@@ -501,7 +241,7 @@ export default function ChatScreen() {
               setValue={setValue}
               onSelectModel={handleModelSelect}
               zIndex={50}
-              models={availableModels}
+              // models={availableModels}
             />
             <Button 
               icon={Settings} 
@@ -543,37 +283,6 @@ export default function ChatScreen() {
       <SettingsSheet
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
-        onConnectOpenAI={handleConnectOpenAI}
-        onConnectAnthropic={handleConnectAnthropic}
-        onConnectGemini={handleConnectGemini}
-        onDeleteOpenAI={handleDeleteOpenAIKey}
-        onDeleteAnthropic={handleDeleteAnthropicKey}
-        onDeleteGemini={handleDeleteGeminiKey}
-        hasOpenAIKey={hasOpenAIKey}
-        hasAnthropicKey={hasAnthropicKey}
-        hasGeminiKey={hasGeminiKey}
-        onModelDownloaded={handleModelDownloaded}
-      />
-      
-      <ApiKeyDialog
-        open={openAIDialogOpen}
-        provider="OpenAI"
-        onClose={() => setOpenAIDialogOpen(false)}
-        onSave={handleSaveOpenAIKey}
-      />
-      
-      <ApiKeyDialog
-        open={anthropicDialogOpen}
-        provider="Anthropic"
-        onClose={() => setAnthropicDialogOpen(false)}
-        onSave={handleSaveAnthropicKey}
-      />
-
-      <ApiKeyDialog
-        open={geminiDialogOpen}
-        provider="Google"
-        onClose={() => setGeminiDialogOpen(false)}
-        onSave={handleSaveGeminiKey}
       />
     </SafeAreaView>
   );

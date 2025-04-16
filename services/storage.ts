@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message } from '@/components/ChatMessage';
 import { Model } from '@/services/models';
 import * as FileSystem from 'expo-file-system';
+import { Provider } from '@/services/models';
+
 // Conversation structure
 export interface Conversation {
   id: string;
@@ -19,9 +21,6 @@ interface ConversationsStore {
 // Keys for AsyncStorage
 const STORAGE_KEY = '@cactus_conversations';
 const LAST_MODEL_KEY = '@last_used_model';
-// const OPENAI_API_KEY = '@cactus_openai_api_key';
-// const ANTHROPIC_API_KEY = '@cactus_anthropic_api_key';
-// const GEMINI_API_KEY = '@cactus_gemini_api_key';
 
 // Save a single conversation
 export async function saveConversation(conversation: Conversation): Promise<void> {
@@ -98,11 +97,11 @@ export async function getLastUsedModel(): Promise<string | null> {
   }
 }
 
-function fetchProviderKeyStoreName(provider: string): string {
+function fetchProviderKeyStoreName(provider: Provider): string {
   return `@cactus_${provider.toLowerCase()}_api_key`;
 }
 
-export async function saveApiKey(provider: string, key: string): Promise<void> {
+export async function saveApiKey(provider: Provider, key: string): Promise<void> {
   try {
     await AsyncStorage.setItem(fetchProviderKeyStoreName(provider), key);
     console.log(`${provider} key saved`);
@@ -111,7 +110,7 @@ export async function saveApiKey(provider: string, key: string): Promise<void> {
   }
 }
 
-export async function getApiKey(provider: string): Promise<string | null> {
+export async function getApiKey(provider: Provider): Promise<string | null> {
   try {
     return await AsyncStorage.getItem(fetchProviderKeyStoreName(provider));
   } catch (error) {
@@ -120,7 +119,7 @@ export async function getApiKey(provider: string): Promise<string | null> {
   }
 }
 
-export async function deleteApiKey(provider: string): Promise<void> {
+export async function deleteApiKey(provider: Provider): Promise<void> {
   try {
     await AsyncStorage.removeItem(fetchProviderKeyStoreName(provider));
   } catch (error) {
@@ -128,28 +127,20 @@ export async function deleteApiKey(provider: string): Promise<void> {
   }
 }
 
-// Local model storage
-export type LocalModel = {
-  id: string,
-  name: string, 
-  filePath: string
-};
+export const storeLocalModel = (model: Model) => 
+  AsyncStorage.setItem(`local_model_${model.value}`, JSON.stringify(model));
 
-export const storeLocalModel = (model: LocalModel) => 
-  AsyncStorage.setItem(`local_model_${model.id}`, JSON.stringify(model));
-
-export const getLocalModels = async (): Promise<LocalModel[]> => {
+export const getLocalModels = async (): Promise<Model[]> => {
   const keys = await AsyncStorage.getAllKeys();
   const models = await AsyncStorage.multiGet(keys.filter(k => k.startsWith('local_model_')));
-  return models.map(([_, val]) => JSON.parse(val as string) as LocalModel);
+  return models.map(([_, val]) => JSON.parse(val as string) as Model);
 };
 
-export const removeLocalModel = (id: string) => {
-  AsyncStorage.getItem(`local_model_${id}`).then((localModel) => {
-    if (localModel) {
-      const model = JSON.parse(localModel) as LocalModel;
-      FileSystem.deleteAsync(model.filePath);
-    }
-    AsyncStorage.removeItem(`local_model_${id}`);
-  });
+export const removeLocalModel = async (id: string) => {
+  const localModel = await AsyncStorage.getItem(`local_model_${id}`);
+  if (localModel) {
+    const model = JSON.parse(localModel) as Model;
+    await FileSystem.deleteAsync(model.meta?.filePath || '');
+    await AsyncStorage.removeItem(`local_model_${id}`);
+  }
 }

@@ -11,7 +11,7 @@ export async function streamGeminiCompletion(
   streaming: boolean = true
 ) {
   try {
-    const apiKey = await getApiKey('gemini');
+    const apiKey = await getApiKey('Google');
     if (!apiKey) {
       throw new Error('Gemini API key not found. Please add your API key in settings.');
     }

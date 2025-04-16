@@ -4,6 +4,7 @@ import { Dispatch, SetStateAction } from 'react';
 import { Model, models as defaultModels } from '../services/models';
 import { ViewStyle } from 'react-native';
 import { truncateModelName } from '@/utils/modelUtils';
+import { useModelContext } from '@/contexts/modelContext';
 
 const dropdownStyles = {
   container: {
@@ -35,7 +36,7 @@ interface ModelPickerProps {
   setValue: Dispatch<SetStateAction<string | null>>;
   onSelectModel: (model: Model) => void;
   zIndex?: number;
-  models?: Model[];
+  // models?: Model[];
 }
 
 export function ModelPicker({ 
@@ -45,17 +46,18 @@ export function ModelPicker({
   setValue, 
   onSelectModel, 
   zIndex = 50,
-  models = defaultModels
+  // models = defaultModels
 }: ModelPickerProps) {
-  const items = models.map(model => ({
-    label: truncateModelName(model.label),
+  const { availableModels } = useModelContext();
+  const items = availableModels.map(model => ({
+    label: truncateModelName(model?.label),
     value: model.value,
     disabled: model.disabled
   }));
 
   const handleChange = (itemValue: string | null) => {
     if (itemValue) {
-      const selectedModel = models.find(model => model.value === itemValue);
+      const selectedModel = availableModels.find(model => model.value === itemValue);
       if (selectedModel) onSelectModel(selectedModel);
     }
   };

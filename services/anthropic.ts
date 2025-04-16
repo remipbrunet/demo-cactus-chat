@@ -11,7 +11,7 @@ export async function streamAnthropicCompletion(
   streaming: boolean = true
 ) {
   try {
-    const apiKey = await getApiKey('anthropic');
+    const apiKey = await getApiKey('Anthropic');
     if (!apiKey) {
       throw new Error('Anthropic API key not found. Please add your API key in settings.');
     }

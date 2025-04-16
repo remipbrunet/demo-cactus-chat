@@ -1,18 +1,22 @@
 import { YStack, Button, Text, XStack, Input, Progress } from 'tamagui'
-import { Modal, View, TouchableWithoutFeedback, Animated, ScrollView } from 'react-native'
+import { Modal, View, TouchableWithoutFeedback, Animated, ScrollView, Alert } from 'react-native'
 import { useEffect, useRef, useState } from 'react'
 import { Check, Trash, Download } from '@tamagui/lucide-icons'
-import { LocalModel, getLocalModels, removeLocalModel } from '@/services/storage'
+import { deleteApiKey, getLocalModels, removeLocalModel } from '@/services/storage'
 import { downloadModel, validateModelUrl, truncateModelName } from '@/utils/modelUtils'
+import { useModelContext } from '@/contexts/modelContext'
+import { saveApiKey } from '@/services/storage'
+import { ApiKeyDialog } from './ApiKeyDialog'
+import { Provider } from '@/services/models'
 
 // Recommended model for first-time users
 const RECOMMENDED_MODELS = [
   {
-    name: "SmolLM2 135M Instruct Q8_0",
+    value: "SmolLM2 135M Instruct Q8_0",
     url: "https://huggingface.co/unsloth/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q8_0.gguf"
   },
   {
-    name: "gemma 3 1b it Q8_0",
+    value: "gemma 3 1b it Q8_0",
     url: "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q8_0.gguf"
   }
 ];
@@ -20,58 +24,31 @@ const RECOMMENDED_MODELS = [
 interface SettingsSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onConnectOpenAI: () => void
-  onConnectAnthropic: () => void
-  onDeleteOpenAI?: () => void
-  onDeleteAnthropic?: () => void
-  hasOpenAIKey: boolean
-  hasAnthropicKey: boolean
-  hasGeminiKey: boolean
-  onConnectGemini: () => void
-  onDeleteGemini: () => void
-  onModelDownloaded?: (name: string) => void
+
+  // onConnectOpenAI: () => void
+  // onConnectAnthropic: () => void
+  // onConnectGemini: () => void
 }
 
 export function SettingsSheet({ 
   open, 
   onOpenChange,
-  onConnectOpenAI,
-  onConnectAnthropic,
-  onDeleteOpenAI,
-  onDeleteAnthropic,
-  hasOpenAIKey,
-  hasAnthropicKey,
-  hasGeminiKey,
-  onConnectGemini,
-  onDeleteGemini,
-  onModelDownloaded
+  // onConnectOpenAI,
+  // onConnectAnthropic,
+  // onConnectGemini,
 }: SettingsSheetProps) {
   // Model URL input state
+  const { availableModels, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey } = useModelContext();
   const [modelUrl, setModelUrl] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
-  const [localModels, setLocalModels] = useState<LocalModel[]>([]);
-  
+  const [apiKeyDialogProvider, setApiKeyDialogProvider] = useState<Provider | null>(null);
   // Fade-in animation for overlay
   const fadeAnim = useRef(new Animated.Value(0)).current;
   // Slide-up animation for the sheet
   const slideAnim = useRef(new Animated.Value(300)).current;
-  
-  // Load local models on open
-  useEffect(() => {
-    if (open) {
-      loadLocalModels();
-    }
-  }, [open]);
-  
-  // Load local models
-  const loadLocalModels = async () => {
-    const models = await getLocalModels();
-    setLocalModels(models);
-  };
-  
-  // Handle model download
+
   const handleModelDownload = async (urlOverride?: string) => {
     setErrorMessage('');
 
@@ -88,9 +65,9 @@ export function SettingsSheet({
       setIsDownloading(true);
       const model = await downloadModel(urlToDownload, setDownloadProgress);
       setModelUrl('');
-      await loadLocalModels();
+      refreshModels();
       // Notify parent about successful download
-      onModelDownloaded?.(model.name);
+      Alert.alert('Success', `Model ${model.label} downloaded successfully`);
     } catch (error: any) {
       setErrorMessage(error.message || 'Download failed');
     } finally {
@@ -98,11 +75,30 @@ export function SettingsSheet({
       setDownloadProgress(0);
     }
   };
+
+  const handleDeleteApiKey = (provider: Provider) => {
+    Alert.alert(
+      `Delete ${provider} Key`, 
+      `Are you sure you want to remove your ${provider} API key?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await deleteApiKey(provider).then(() => refreshModels());
+          }
+        }
+      ]
+    );
+  };
   
   // Handle model deletion
   const handleDeleteModel = async (id: string) => {
-    await removeLocalModel(id);
-    setLocalModels(localModels.filter(model => model.id !== id));
+    removeLocalModel(id).then(() => refreshModels());
   };
   
   useEffect(() => {
@@ -210,7 +206,7 @@ export function SettingsSheet({
                     marginLeft={8}
                     size="$4"
                     icon={Download}
-                    onPress={handleModelDownload}
+                    onPress={() => handleModelDownload()}
                     disabled={!modelUrl.trim()}
                   >
                     Add
@@ -226,8 +222,8 @@ export function SettingsSheet({
               ) : null}
 
               {/* recommended models section */}
-              {RECOMMENDED_MODELS.filter(model => !localModels.some(localModel => localModel.name === model.name)).map((model) => (
-                <XStack key={model.name} alignItems="center" marginBottom={8}>
+              {RECOMMENDED_MODELS.filter(model => !availableModels.some(localModel => localModel.value === model.value)).map((model) => (
+                <XStack key={model.value} alignItems="center" marginBottom={8}>
                   <Button
                     flex={1}
                     size="$4"
@@ -235,7 +231,7 @@ export function SettingsSheet({
                     disabled
                     opacity={0.6}
                   >
-                    {model.name}
+                    {model.value}
                   </Button>
                   <Button
                     marginLeft={8}
@@ -250,8 +246,8 @@ export function SettingsSheet({
               ))} 
               
               {/* List of local models */}
-              {localModels.map(model => (
-                <XStack key={model?.id} alignItems="center" marginBottom={8}>
+              {availableModels.filter(model => model.isLocal).map(model => (
+                <XStack key={model?.value} alignItems="center" marginBottom={8}>
                   <Button
                     flex={1}
                     size="$4"
@@ -260,14 +256,14 @@ export function SettingsSheet({
                     opacity={0.6}
                   >
                     {/* {truncateModelName(model?.name || '')} */}
-                    {model.name}
+                    {model.value}
                   </Button>
                   <Button
                     marginLeft={8}
                     size="$4"
                     theme="red"
                     icon={Trash}
-                    onPress={() => handleDeleteModel(model.id)}
+                    onPress={() => handleDeleteModel(model.value)}
                   />
                 </XStack>
               ))}
@@ -286,14 +282,14 @@ export function SettingsSheet({
                   disabled={hasOpenAIKey}
                   opacity={hasOpenAIKey ? 0.6 : 1}
                   onPress={() => {
-                    onConnectOpenAI();
+                    setApiKeyDialogProvider('OpenAI');
                   }}
                   icon={hasOpenAIKey ? Check : undefined}
                 >
                   {hasOpenAIKey ? 'Connected to OpenAI' : 'Connect OpenAI'}
                 </Button>
                 
-                {hasOpenAIKey && onDeleteOpenAI && (
+                {hasOpenAIKey && (
                   <Button
                     marginLeft={8}
                     marginTop={8}
@@ -301,7 +297,7 @@ export function SettingsSheet({
                     size="$4"
                     theme="red"
                     icon={Trash}
-                    onPress={onDeleteOpenAI}
+                    onPress={() =>handleDeleteApiKey('OpenAI')}
                   />
                 )}
               </XStack>
@@ -314,21 +310,21 @@ export function SettingsSheet({
                   disabled={hasAnthropicKey}
                   opacity={hasAnthropicKey ? 0.6 : 1}
                   onPress={() => {
-                    onConnectAnthropic();
+                    setApiKeyDialogProvider('Anthropic');
                   }}
                   icon={hasAnthropicKey ? Check : undefined}
                 >
                   {hasAnthropicKey ? 'Connected to Anthropic' : 'Connect Anthropic'}
                 </Button>
                 
-                {hasAnthropicKey && onDeleteAnthropic && (
+                {hasAnthropicKey && (
                   <Button
                     marginLeft={8}
                     marginTop={8}
                     size="$4"
                     theme="red"
                     icon={Trash}
-                    onPress={onDeleteAnthropic}
+                    onPress={() =>handleDeleteApiKey('Anthropic')}
                   />
                 )}
               </XStack>
@@ -341,21 +337,21 @@ export function SettingsSheet({
                   disabled={hasGeminiKey}
                   opacity={hasGeminiKey ? 0.6 : 1}
                   onPress={() => {
-                    onConnectGemini();
+                    setApiKeyDialogProvider('Google');
                   }}
                   icon={hasGeminiKey ? Check : undefined}
                 >
                   {hasGeminiKey ? 'Connected to Gemini' : 'Connect Gemini'}
                 </Button>
                 
-                {hasGeminiKey && onDeleteGemini && (
+                {hasGeminiKey && (
                   <Button
                     marginLeft={8}
                     marginTop={8}
                     size="$4"
                     theme="red"
                     icon={Trash}
-                    onPress={onDeleteGemini}
+                    onPress={() =>handleDeleteApiKey('Google')}
                   />
                 )}
               </XStack>
@@ -364,6 +360,11 @@ export function SettingsSheet({
           </YStack>
         </Animated.View>
       </Animated.View>
+      <ApiKeyDialog
+        open={apiKeyDialogProvider !== null}
+        provider={apiKeyDialogProvider || 'Cactus'} // Cactus is just a placeholder so we don't get type errors in ApiKeyDialog
+        onClose={() => setApiKeyDialogProvider(null)}
+      />
     </Modal>
   )
 } 

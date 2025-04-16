@@ -5,16 +5,16 @@ import OpenAI from 'openai'
 import { Anthropic } from '@anthropic-ai/sdk'
 import {GoogleGenAI} from '@google/genai';
 import { useModelContext } from '@/contexts/modelContext';
-
+import { saveApiKey } from '@/services/storage';
+import { Provider } from '@/services/models';
 
 interface ApiKeyDialogProps {
   open: boolean
-  provider: 'OpenAI' | 'Anthropic' | 'Google'
+  provider: Provider
   onClose: () => void
-  onSave: (key: string) => void
 }
 
-export function ApiKeyDialog({ open, provider, onClose, onSave }: ApiKeyDialogProps) {
+export function ApiKeyDialog({ open, provider, onClose }: ApiKeyDialogProps) {
 
   const { refreshModels } = useModelContext();
   const [apiKey, setApiKey] = useState('')
@@ -23,7 +23,7 @@ export function ApiKeyDialog({ open, provider, onClose, onSave }: ApiKeyDialogPr
 
   interface ValidationParams {
     key: string
-    provider: 'OpenAI' | 'Anthropic' | 'Google'
+    provider: Provider
   }
 
   const validateKey = async (params: ValidationParams): Promise<boolean> => {
@@ -52,6 +52,9 @@ export function ApiKeyDialog({ open, provider, onClose, onSave }: ApiKeyDialogPr
           await genAI.models.get({model: 'gemini-2.0-flash'})
           return true
         }
+        default: {
+          return false
+        }
       }
     } catch (error) {
       console.error(`Validation error for ${params.provider}:`, error)
@@ -79,10 +82,11 @@ export function ApiKeyDialog({ open, provider, onClose, onSave }: ApiKeyDialogPr
     }
     
     if (isValid) {
-      onSave(apiKey.trim())
+      await saveApiKey(provider, apiKey.trim())
       setApiKey('')
       setErrorMessage('')
       refreshModels();
+      onClose();
     }
   }
   

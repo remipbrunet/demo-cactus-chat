@@ -1,45 +1,41 @@
-import { getLocalModels } from '@/services/storage';
 import { initLlama, LlamaContext } from 'llama.rn';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
+import { Model } from '@/services/models';
 
 interface loadedContext {
     context: LlamaContext | null,
-    modelId: string
+    modelValue: string
 }
 
 let loadedContext: loadedContext = {
     context: null,
-    modelId: ''
+    modelValue: ''
 };
 
 // Initialize Llama context for specific model
-export const ensureLocalModelContext = async (modelId: string): Promise<LlamaContext | null> => {
+export const ensureLocalModelContext = async (model: Model): Promise<LlamaContext | null> => {
 
   // If we already have a context, return it
-  if (loadedContext && loadedContext.modelId === modelId) {
+  if (loadedContext && loadedContext.modelValue === model.value) {
     return loadedContext.context
   }
 
-  if (modelId?.startsWith('local-')) {
-    const localModelId = modelId.replace('local-', '');
-    const localModels = await getLocalModels();
-    const model = localModels.find(m => m.id === localModelId);
-    
-    if (model && (await FileSystem.getInfoAsync(model.filePath)).exists) {
-      console.log(`Initializing local model: ${model.name}`);
-      loadedContext.modelId = modelId;
+  if (model.isLocal) {
+    if (model && (await FileSystem.getInfoAsync(model.meta?.filePath)).exists) {
+      console.log(`Initializing local model: ${model.value}`);
+      loadedContext.modelValue = model.value;
       loadedContext.context = await initLlama({
-        model: model.filePath,
+        model: model.meta?.filePath,
         use_mlock: true,
         n_ctx: 2048,
         n_gpu_layers: Platform.OS === 'ios' ? 99 : 0
       });
-      console.log(`Local model initialized: ${model.name}`);
+      console.log(`Local model initialized: ${model.value}`);
       return loadedContext.context;
     }
     
-    throw new Error(`Local model not found: ${modelId}`);
+    throw new Error(`Local model not found: ${model.value}`);
   }
 
   return loadedContext.context

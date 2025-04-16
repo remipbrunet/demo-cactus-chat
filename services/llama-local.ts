@@ -1,83 +1,18 @@
-import { initLlama } from 'llama.rn';
 import { Message } from '@/components/ChatMessage';
 import { ModelMetrics } from '@/utils/modelMetrics';
-import * as FileSystem from 'expo-file-system';
-import { Platform } from 'react-native';
-import { getLocalModels } from './storage';
 import { ensureLocalModelContext } from '@/utils/localModelContext';
-// Global context to avoid reinitializing
-let llamaContext: any = null;
-
-// // Default small model to download
-// const DEFAULT_MODEL = {
-//   name: 'TinyLlama-1.1B-Chat-v1.0',
-//   url: 'https://huggingface.co/unsloth/gemma-3-4b-it-GGUF/resolve/main/gemma-3-4b-it-Q4_K_M.gguf',
-//   fileName: 'gemma-3-4b-it-Q4_K_M.gguf'
-// };
-
-// Initialize Llama context for specific model
-// async function ensureLlamaContext(modelId?: string) {
-//   if (llamaContext) return llamaContext;
-//   // If we have a specific model ID that starts with "local-", use that local model
-//   if (modelId?.startsWith('local-')) {
-//     const localModelId = modelId.replace('local-', '');
-//     const localModels = await getLocalModels();
-//     const model = localModels.find(m => m.id === localModelId);
-    
-//     if (model && (await FileSystem.getInfoAsync(model.filePath)).exists) {
-//       console.log(`Initializing local model: ${model.name}`);
-//       llamaContext = await initLlama({
-//         model: model.filePath,
-//         use_mlock: true,
-//         n_ctx: 2048,
-//         n_gpu_layers: Platform.OS === 'ios' ? 99 : 0
-//       });
-//       return llamaContext;
-//     }
-    
-//     throw new Error(`Local model not found: ${modelId}`);
-//   }
-  
-//   try {
-//     // Get model path
-//     const modelDir = Platform.OS === 'ios' ? FileSystem.documentDirectory + 'local-models/' : FileSystem.cacheDirectory + 'local-models/';
-//     await FileSystem.makeDirectoryAsync(modelDir, { intermediates: true }).catch(() => {});
-//     const modelPath = modelDir + DEFAULT_MODEL.fileName;
-    
-//     // Download if needed
-//     if (!(await FileSystem.getInfoAsync(modelPath)).exists) {
-//       console.log(`Downloading ${DEFAULT_MODEL.name}...`);
-//       await FileSystem.createDownloadResumable(DEFAULT_MODEL.url, modelPath, {}, 
-//         p => process.stdout.write(`\rDownload: ${Math.round(p.totalBytesWritten / p.totalBytesExpectedToWrite * 100)}%`)
-//       ).downloadAsync();
-//       process.stdout.write('\n'); // Add newline after download completes
-//     }
-    
-//     // Initialize Llama
-//     console.log('Initializing Llama...');
-//     llamaContext = await initLlama({
-//       model: modelPath,
-//       use_mlock: true,
-//       n_ctx: 2048,
-//       n_gpu_layers: Platform.OS === 'ios' ? 99 : 0
-//     });
-//     return llamaContext;
-//   } catch (error) {
-//     console.error('Error:', error);
-//     throw error;
-//   }
-// }
+import { Model } from './models';
 
 export async function streamLlamaCompletion(
   messages: Message[],
-  modelValue: string,
+  model: Model,
   onProgress: (text: string) => void,
   onComplete: (modelMetrics: ModelMetrics) => void,
   streaming: boolean = true
 ) {
   try {
     console.log('Ensuring Llama context...', new Date().toISOString());
-    const context = await ensureLocalModelContext(modelValue);
+    const context = await ensureLocalModelContext(model);
     if (!context) {
       throw new Error('Failed to initialize Llama context');
     }

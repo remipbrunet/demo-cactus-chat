@@ -1,60 +1,56 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getApiKey, getLocalModels, LocalModel } from './storage';
-import * as FileSystem from 'expo-file-system';
+import { getApiKey, getLocalModels } from './storage';
+
+export type Provider = 'OpenAI' | 'Cactus' | 'Anthropic' | 'Google';
 
 export interface Model {
   value: string;
   label: string;
-  provider: 'openai' | 'cactus' | 'anthropic' | 'google';
+  provider: Provider;
   disabled: boolean;
+  isLocal: boolean;
   meta?: Record<string, any>;
 }
 
 // Check provider availability functions
 export async function isOpenAIAvailable(): Promise<boolean> {
-  const key = await getApiKey('openai');
+  const key = await getApiKey('OpenAI');
   return !!key;
 }
 
 export async function isAnthropicAvailable(): Promise<boolean> {
-  const key = await getApiKey('anthropic');
+  const key = await getApiKey('Anthropic');
   return !!key;
 }
 
 export async function isGeminiAvailable(): Promise<boolean> {
-  const key = await getApiKey('gemini');
+  const key = await getApiKey('Google');
   return !!key;
 }
 
-export const models: Model[] = [
-  // we use value as the unique identifier for all models
-  // {
-  //   value: 'cactus-7b',
-  //   label: 'Cactus Private 7B',
-  //   provider: 'cactus',
-  //   disabled: false
-  // },
+export const models: Model[] = [ // we use value as the unique identifier for all models!!!
   {
     value: 'gpt-4o-mini',
     label: 'GPT-4o Mini',
-    provider: 'openai',
-    disabled: false
+    provider: 'OpenAI',
+    disabled: false,
+    isLocal: false
   },
   {
     value: 'claude-3-haiku-20240307',
     label: 'Claude 3 Haiku',
-    provider: 'anthropic',
-    disabled: false
+    provider: 'Anthropic',
+    disabled: false,
+    isLocal: false
   },
   {
     value: 'gemini-1.5-flash',
     label: 'Gemini 1.5 Flash',
-    provider: 'google',
-    disabled: false
+    provider: 'Google',
+    disabled: false,
+    isLocal: false
   }
 ];
 
-// Function to refresh model availability
 export async function refreshModelAvailability(): Promise<Model[]> {
   const openAIAvailable = await isOpenAIAvailable();
   const anthropicAvailable = await isAnthropicAvailable();
@@ -62,35 +58,13 @@ export async function refreshModelAvailability(): Promise<Model[]> {
   
   const updatedModels = models.map(model => ({
     ...model,
-    disabled: model.provider === 'openai' ? !openAIAvailable : 
-              model.provider === 'anthropic' ? !anthropicAvailable :
-              model.provider === 'google' ? !geminiAvailable :
+    disabled: model.provider === 'OpenAI' ? !openAIAvailable : 
+              model.provider === 'Anthropic' ? !anthropicAvailable :
+              model.provider === 'Google' ? !geminiAvailable :
               model.disabled
   }));
-  
-  // Add local models
+
   const localModels = await getLocalModels();
-  // const localModelEntries = await Promise.all(
-  //   localModels.map(async model => {
-  //     // Check if file exists
-  //     const fileInfo = await FileSystem.getInfoAsync(model.filePath);
-  //     console.log('fileInfo', new Date().toISOString(), fileInfo);
-  //     return {
-  //       value: `local-${model.id}`,
-  //       label: model.name,
-  //       provider: 'cactus' as const,
-  //       disabled: !fileInfo.exists,
-  //       meta: { filePath: model.filePath, local: true }
-  //     };
-  //   })
-  // );
-  const localModelEntries = localModels.map(model => ({
-    value: `local-${model.id}`,
-    label: model.name,
-    provider: 'cactus' as const,
-    disabled: !model.filePath,
-    meta: { filePath: model.filePath, local: true }
-  }));
-  
-  return [...updatedModels, ...localModelEntries];
+
+  return [...updatedModels, ...localModels];
 } 

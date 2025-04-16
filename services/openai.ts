@@ -11,7 +11,7 @@ export async function streamOpenAICompletion(
   streaming: boolean = true
 ) {
   try {
-    const apiKey = await getApiKey('openai');
+    const apiKey = await getApiKey('OpenAI');
     if (!apiKey) {
       throw new Error('OpenAI API key not found. Please add your API key in settings.');
     }
@@ -103,16 +103,6 @@ export async function streamOpenAICompletion(
       es.addEventListener('message', listener)
       es.addEventListener('error', listener)
       es.addEventListener('close', listener)
-      // return () => {
-      //   es.removeAllEventListeners()
-      //   es.close()
-      // }
-    } else {
-      // const response = await openai.chat.completions.create({
-      //   model,
-      //   messages: formattedMessages,
-      //   stream: false
-      // })
     }
   } catch (error) {
     console.error('Error during chat completion:', error);

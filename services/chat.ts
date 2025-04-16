@@ -30,7 +30,7 @@ export async function sendChatMessage(
 ): Promise<void> {
   try {
     switch (model.provider) {
-      case 'openai':
+      case 'OpenAI':
         return await streamOpenAICompletion(
           messages, 
           model.value, 
@@ -39,7 +39,7 @@ export async function sendChatMessage(
           options.streaming
         );
         
-      case 'anthropic':
+      case 'Anthropic':
         return await streamAnthropicCompletion(
           messages, 
           model.value, 
@@ -48,7 +48,7 @@ export async function sendChatMessage(
           options.streaming
         );
         
-      case 'google':
+      case 'Google':
         return await streamGeminiCompletion(
           messages, 
           model.value, 
@@ -57,10 +57,10 @@ export async function sendChatMessage(
           options.streaming
         );
         
-      case 'cactus':
+      case 'Cactus':
         return await streamLlamaCompletion(
           messages, 
-          model.value, 
+          model, 
           onProgress, 
           onComplete, 
           options.streaming

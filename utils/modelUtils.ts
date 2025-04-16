@@ -1,10 +1,10 @@
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
-import { LocalModel, storeLocalModel } from '../services/storage';
-
+import { storeLocalModel } from '../services/storage';
+import { Model } from '../services/models';
 // Truncate model name with ellipsis if too long
 export const truncateModelName = (name: string, maxLength = 17) => 
-  name.length > maxLength ? name.substring(0, maxLength - 1) + '…' : name;
+  name?.length > maxLength ? name.substring(0, maxLength - 1) + '…' : name;
 
 // Extract filename from HuggingFace URL
 export function extractFilenameFromUrl(url: string): string | null {
@@ -32,7 +32,7 @@ export function validateModelUrl(url: string): { valid: boolean; reason?: string
 }
 
 // Download a model and return its path
-export async function downloadModel(url: string, onProgress: (progress: number) => void): Promise<LocalModel> {
+export async function downloadModel(url: string, onProgress: (progress: number) => void): Promise<Model> {
   // Validate URL
   const validation = validateModelUrl(url);
   if (!validation.valid) {
@@ -66,10 +66,13 @@ export async function downloadModel(url: string, onProgress: (progress: number) 
   ).downloadAsync();
   
   // Create and save local model record
-  const model: LocalModel = {
-    id: Date.now().toString(),
-    name: modelName,
-    filePath: modelPath
+  const model: Model = {
+    value: modelName,
+    label: modelName,
+    provider: 'Cactus',
+    disabled: false,
+    isLocal: true,
+    meta: { filePath: modelPath }
   };
   
   await storeLocalModel(model);
