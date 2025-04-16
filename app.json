@@ -5,7 +5,7 @@
     "displayName": "Cactus Chat",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/playstore.png",
+    "icon": "./assets/images/bw-logo.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -20,10 +20,10 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/playstore.png",
+        "foregroundImage": "./assets/images/bw-logo.png",
         "backgroundColor": "#ffffff"
       },
-      "icon": "./assets/images/playstore.png",
+      "icon": "./assets/images/bw-logo.png",
       "package": "com.rshemetsubuser.myapp"
     },
     "web": {
