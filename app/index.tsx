@@ -1,4 +1,4 @@
-import { XStack, YStack, Input, Button, ScrollView, Spinner } from 'tamagui';
+import { XStack, YStack, Input, Button, ScrollView, Spinner, Text } from 'tamagui';
 import { useRef, useState, useEffect } from 'react';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,14 +7,11 @@ import { ChatMessage } from '../components/ChatMessage';
 import { ModelPicker } from '../components/ModelPicker';
 import { ConversationSidebar } from '../components/ConversationSidebar';
 import { SettingsSheet } from '../components/SettingsSheet';
-import { Model, models as initialModels } from '../services/models';
 import { sendChatMessage, generateUniqueId } from '@/services/chat';
-import { ensureLocalModelContext } from '@/utils/localModelContext';
 import { 
   Conversation, 
   saveConversation, 
   getConversation, 
-  saveLastUsedModel, 
   getConversations,
 } from '../services/storage';
 import { ModelMetrics } from '@/utils/modelMetrics';
@@ -95,17 +92,6 @@ export default function ChatScreen() {
     
     await saveConversation(conversation);
   };
-
-  // const handleModelSelect = async (model: Model) => {
-  //   const newModelSelected = model !== selectedModel
-  //   setSelectedModel(model);
-  //   saveLastUsedModel(model.value);
-  //   if (newModelSelected) {
-  //     setModelIsLoading(true);
-  //     await ensureLocalModelContext(model);
-  //     setModelIsLoading(false);
-  //   }
-  // };
   
   const createNewConversation = () => {
     // Generate a new conversation ID
@@ -241,7 +227,6 @@ export default function ChatScreen() {
           >
             <Button 
               icon={Menu} 
-              // circular 
               size="$2" 
               chromeless 
               onPress={() => {
@@ -252,16 +237,11 @@ export default function ChatScreen() {
             <ModelPicker
               open={open}
               setModelIsLoading={setModelIsLoading}
-              // value={value}
               setOpen={setOpen}
-              // setValue={setValue}
-              // onSelectModel={handleModelSelect}
               zIndex={50}
-              // models={availableModels}
             />
             <Button 
               icon={Settings} 
-              // circular 
               size="$2" 
               chromeless 
               onPress={() => setSettingsOpen(true)}

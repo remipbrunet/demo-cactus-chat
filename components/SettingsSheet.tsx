@@ -7,15 +7,14 @@ import { downloadModel, validateModelUrl } from '@/utils/modelUtils'
 import { useModelContext } from '@/contexts/modelContext'
 import { ApiKeyDialog } from './ApiKeyDialog'
 import { Provider } from '@/services/models'
+import { extractModelNameFromUrl } from '@/utils/modelUtils'
 
 // Recommended model for first-time users
 const RECOMMENDED_MODELS = [
   {
-    value: "SmolLM2 135M Instruct Q8_0",
     url: "https://huggingface.co/unsloth/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q8_0.gguf"
   },
   {
-    value: "gemma 3 1b it Q8_0",
     url: "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q8_0.gguf"
   }
 ];
@@ -233,22 +232,23 @@ export function SettingsSheet({
               ) : null}
 
               {/* recommended models section */}
-              {RECOMMENDED_MODELS.filter(model => !availableModels.some(localModel => localModel.value === model.value)).map((model) => (
-                <XStack key={model.value} alignItems="center" marginBottom={8}>
+              {RECOMMENDED_MODELS.filter(model => !availableModels.some(localModel => localModel.value === extractModelNameFromUrl(model.url))).map((model) => (
+                <XStack key={model.url} alignItems="center" marginBottom={8}>
                   <Button
                     flex={1}
                     size="$4"
                     // icon={Check}
                     disabled
-                    opacity={0.6}
+                    opacity={0.5}
                   >
-                    {model.value}
+                    {extractModelNameFromUrl(model.url)}
                   </Button>
                   <Button
                     marginLeft={8}
                     size="$4"
                     icon={Download}
                     disabled={isDownloading}
+                    opacity={isDownloading ? 0.5 : 1}
                     onPress={() => {
                     handleModelDownload(model.url)
                   }}

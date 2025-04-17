@@ -35,6 +35,7 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     refreshModelAvailability().then((models) => {
+      console.log('models', models);
       setAvailableModels(models);
     });
     isOpenAIAvailable().then((hasKey) => {

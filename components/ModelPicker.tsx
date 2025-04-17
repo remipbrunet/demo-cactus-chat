@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp } from '@tamagui/lucide-icons';
+import { ChevronDown, ChevronRight, ChevronUp } from '@tamagui/lucide-icons';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { Dispatch, SetStateAction, useState } from 'react';
 import { ViewStyle } from 'react-native';
@@ -6,6 +6,7 @@ import { truncateModelName } from '@/utils/modelUtils';
 import { useModelContext } from '@/contexts/modelContext';
 import { saveLastUsedModel } from '@/services/storage';
 import { ensureLocalModelContext } from '@/utils/localModelContext';
+import { YStack, Text, XStack } from 'tamagui';
 
 const dropdownStyles = {
   container: {
@@ -66,6 +67,10 @@ export function ModelPicker({
     }
   };
 
+  if (!availableModels.filter(model => !model.disabled).length) {
+    return <ModelPickerPlaceholder />
+  }
+
   return (
     <DropDownPicker
       placeholder="Select Model"
@@ -92,3 +97,13 @@ export function ModelPicker({
     />
   );
 } 
+
+function ModelPickerPlaceholder() {
+  // Placeholder we display when no models are available
+  return (
+    <XStack padding="$3" alignItems="center" justifyContent="center" flex={1}>
+      <Text color="$gray10" fontSize={12}>Add models to get started</Text>
+      <ChevronRight size={14} color="$gray10" />
+    </XStack>
+  )
+}

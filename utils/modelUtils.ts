@@ -14,6 +14,14 @@ export function extractFilenameFromUrl(url: string): string | null {
   return match ? match[1] : null;
 }
 
+export function extractModelNameFromUrl(url: string): string | null {
+  const filename = extractFilenameFromUrl(url);
+  if (!filename) {
+    return null;
+  }
+  return filename.replace(/\.gguf$/, '').replace(/-/g, ' ');
+}
+
 // Validate URL is a proper HuggingFace GGUF download link
 export function validateModelUrl(url: string): { valid: boolean; reason?: string } {
   if (!url.includes('huggingface.co')) {
@@ -46,7 +54,10 @@ export async function downloadModel(url: string, onProgress: (progress: number) 
   }
   
   // Generate model name from filename (remove extension and replace dashes with spaces)
-  const modelName = fileName.replace(/\.gguf$/, '').replace(/-/g, ' ');
+  const modelName = extractModelNameFromUrl(url);
+  if (!modelName) {
+    throw new Error('Could not extract model name from URL');
+  }
   
   // Create local models directory 
   const modelDir = Platform.OS === 'ios' 
