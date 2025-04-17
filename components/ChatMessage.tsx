@@ -1,6 +1,7 @@
 import { XStack, YStack, Text } from 'tamagui';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import { Model } from '@/services/models';
+import Markdown from 'react-native-markdown-display';
 
 export interface Message {
   id: string;
@@ -33,14 +34,12 @@ export function ChatMessage({ message }: ChatMessageProps) {
             </Text>
           </YStack>
         )}
-        <Text 
-          color="$color"
-          fontSize={15} 
-          lineHeight={20}
-          fontWeight="400"
-        >
+        <Markdown 
+        style={{ 
+          paragraph: { marginTop: 0, marginBottom: 0, fontSize: 15, lineHeight: 20, fontWeight: '400' }
+        }}>
           {text}
-        </Text>
+        </Markdown>
         
         {!isUser && metrics && (
           <YStack marginTop={8}>
