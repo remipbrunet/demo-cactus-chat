@@ -8,6 +8,7 @@ import { useModelContext } from '@/contexts/modelContext'
 import { ApiKeyDialog } from './ApiKeyDialog'
 import { Provider } from '@/services/models'
 import { extractModelNameFromUrl } from '@/utils/modelUtils'
+import { getTokenGenerationLimit } from '@/services/storage'
 
 // Recommended model for first-time users
 const RECOMMENDED_MODELS = [

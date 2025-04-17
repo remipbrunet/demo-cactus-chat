@@ -1,5 +1,6 @@
 import { createContext, useEffect, useState, useContext } from 'react';
 import { Model, refreshModelAvailability, isOpenAIAvailable, isAnthropicAvailable, isGeminiAvailable } from '@/services/models';
+import { saveTokenGenerationLimit, getTokenGenerationLimit } from '@/services/storage';
 
 interface ModelContextType {
     availableModels: Model[];
@@ -32,11 +33,21 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   const [hasOpenAIKey, setHasOpenAIKey] = useState<boolean>(false);
   const [hasAnthropicKey, setHasAnthropicKey] = useState<boolean>(false);
   const [hasGeminiKey, setHasGeminiKey] = useState<boolean>(false);
-  const [tokenGenerationLimit, setTokenGenerationLimit] = useState<number>(200);
+  const [tokenGenerationLimit, setTokenGenerationLimit] = useState<number>(1000);
 
   function refreshModels() {
     setModelsVersion(modelsVersion + 1);
   }
+
+  useEffect(() => { // on initial load, we get the last saved preferences
+    getTokenGenerationLimit().then((limit) => {
+      setTokenGenerationLimit(limit);
+    });
+  }, []);
+
+  useEffect(() => {
+    saveTokenGenerationLimit(tokenGenerationLimit);
+  }, [tokenGenerationLimit]);
 
   useEffect(() => {
     refreshModelAvailability().then((models) => {

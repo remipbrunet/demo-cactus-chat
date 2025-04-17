@@ -7,6 +7,21 @@ import { supabase } from '@/services/supabase';
 import { Platform } from 'react-native';
 import { getBrand, getModel, getSystemVersion } from 'react-native-device-info';
 
+// Keys for AsyncStorage
+const STORAGE_KEY = '@cactus_conversations';
+const LAST_MODEL_KEY = '@last_used_model';
+const DEVICE_ID_KEY = '@device_id';
+const TOKEN_GENERATION_LIMIT_KEY = '@token_generation_limit';
+
+export const getTokenGenerationLimit = async (): Promise<number> => {
+  const limit = await AsyncStorage.getItem(TOKEN_GENERATION_LIMIT_KEY);
+  return limit ? parseInt(limit) : 1000;
+}
+
+export const saveTokenGenerationLimit = async (limit: number) => {
+  await AsyncStorage.setItem(TOKEN_GENERATION_LIMIT_KEY, limit.toString());
+}
+
 export const getModelDirectory = () => 
   Platform.OS === 'ios' 
     ? `${FileSystem.documentDirectory}local-models/`
@@ -22,9 +37,6 @@ interface RegisterDeviceResponse {
 
 export async function registerDevice(): Promise<RegisterDeviceResponse> {
   const { data, error } = await supabase.from('devices').insert({
-      // brand: 'Unknown',
-      // model: 'Unknown',
-      // os_version: 'Unknown',
       brand: getBrand(),
       model: getModel(),
       os_version: getSystemVersion(),
@@ -48,11 +60,6 @@ export interface Conversation {
 interface ConversationsStore {
   [id: string]: Conversation;
 }
-
-// Keys for AsyncStorage
-const STORAGE_KEY = '@cactus_conversations';
-const LAST_MODEL_KEY = '@last_used_model';
-const DEVICE_ID_KEY = '@device_id';
 
 async function registerDeviceIfNotRegistered(): Promise<string | null> {
   const {success, deviceId} = await registerDevice();
