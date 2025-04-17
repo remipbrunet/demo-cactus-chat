@@ -35,7 +35,9 @@ export async function streamGeminiCompletion(
     if (streaming) {
       const payload = {
         contents: formattedMessages,
-        max_tokens: maxTokens,
+        generationConfig: {
+            maxOutputTokens: maxTokens
+        }
       }
 
       // We've already checked apiKey is not null above
@@ -70,7 +72,7 @@ export async function streamGeminiCompletion(
                     //
                 }
 
-                if (data.candidates[0]?.finishReason === 'STOP') {
+                if (data.candidates[0]?.finishReason === 'STOP' || data.candidates[0]?.finishReason === 'MAX_TOKENS') {
                     const endTime = performance.now();
                     const totalTime = endTime - startTime;
 
