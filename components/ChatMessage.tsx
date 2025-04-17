@@ -36,7 +36,19 @@ export function ChatMessage({ message }: ChatMessageProps) {
         )}
         <Markdown 
         style={{ 
-          paragraph: { marginTop: 0, marginBottom: 0, fontSize: 15, lineHeight: 20, fontWeight: '400' }
+
+          paragraph: { fontSize: 14, lineHeight: 21, fontWeight: '400', marginTop: 0, marginBottom: 0 },
+          bullet_list_content: { fontSize: 14, lineHeight: 21, fontWeight: '400', marginTop: 0, marginBottom: 5 },
+          ordered_list_content: { fontSize: 14, lineHeight: 21, fontWeight: '400', marginTop: 0, marginBottom: 5 },
+          heading1: { fontSize: 26, lineHeight: 31, fontWeight: '600', marginTop: 10, marginBottom: 10 },
+          heading2: { fontSize: 21, lineHeight: 31, fontWeight: '600', marginTop: 10, marginBottom: 10 },
+          heading3: { fontSize: 18, lineHeight: 21, fontWeight: '600', marginTop: 10, marginBottom: 10 },
+          heading4: { fontSize: 16, lineHeight: 21, fontWeight: '600', marginTop: 10, marginBottom: 10 },
+          heading5: { fontSize: 14, lineHeight: 21, fontWeight: '600', marginTop: 10, marginBottom: 10 },
+          heading6: { fontSize: 13, lineHeight: 21, fontWeight: '600', marginTop: 10, marginBottom: 10 },
+          bullet_list_icon: { marginLeft: 5, marginRight: 5 },
+          ordered_list_icon: { marginLeft: 5, marginRight: 5 },
+          // code_block: { fontSize: 14, lineHeight: 21, fontWeight: '400', marginTop: 10, marginBottom: 10 },
         }}>
           {text}
         </Markdown>

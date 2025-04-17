@@ -105,10 +105,25 @@ export function SettingsSheet({
       ]
     );
   };
-  
-  // Handle model deletion
-  const handleDeleteModel = async (id: string) => {
-    removeLocalModel(id).then(() => refreshModels());
+
+  const handleDeleteModel = (modelValue: string) => {
+    Alert.alert(
+      `Delete ${modelValue}`, 
+      `Are you sure you want to delete this model? This cannot be undone. You will need to download the model again to use it.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await removeLocalModel(modelValue).then(() => refreshModels());
+          }
+        }
+      ]
+    );
   };
   
   useEffect(() => {
