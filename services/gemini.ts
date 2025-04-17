@@ -8,7 +8,8 @@ export async function streamGeminiCompletion(
   model: string,
   onProgress: (text: string) => void,
   onComplete: (modelMetrics: ModelMetrics) => void,
-  streaming: boolean = true
+  streaming: boolean = true,
+  maxTokens: number
 ) {
   try {
     const apiKey = await getApiKey('Google');
@@ -34,6 +35,7 @@ export async function streamGeminiCompletion(
     if (streaming) {
       const payload = {
         contents: formattedMessages,
+        max_tokens: maxTokens,
       }
 
       // We've already checked apiKey is not null above

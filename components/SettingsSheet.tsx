@@ -1,4 +1,4 @@
-import { YStack, Button, Text, XStack, Input, Progress } from 'tamagui'
+import { YStack, Button, Text, XStack, Input, Progress, Slider, Tabs } from 'tamagui'
 import { Modal, View, TouchableWithoutFeedback, Animated, ScrollView, Alert } from 'react-native'
 import { useEffect, useRef, useState } from 'react'
 import { Check, Trash, Download } from '@tamagui/lucide-icons'
@@ -34,7 +34,7 @@ export function SettingsSheet({
   onOpenChange,
 }: SettingsSheetProps) {
   // Model URL input state
-  const { availableModels, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey } = useModelContext();
+  const { availableModels, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey, tokenGenerationLimit, setTokenGenerationLimit } = useModelContext();
   const [modelUrl, setModelUrl] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
@@ -73,11 +73,11 @@ export function SettingsSheet({
     
     try {
       setIsDownloading(true);
-      const model = await downloadModel(urlToDownload, setDownloadProgress);
+      await downloadModel(urlToDownload, setDownloadProgress);
       setModelUrl('');
       refreshModels();
       // Notify parent about successful download
-      Alert.alert('Success', `Model ${model.label} downloaded successfully`);
+      // Alert.alert('Success', `Model ${model.label} downloaded successfully`);
     } catch (error: any) {
       setErrorMessage(error.message || 'Download failed');
     } finally {
@@ -183,106 +183,121 @@ export function SettingsSheet({
               Download and use local models privately or add keys for API providers.{'\n\n'}This is helpful for throughput and latency benchmarking.
             </Text>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-
-              {/* Local Models Section */}
-              <Text fontSize={16} fontWeight="500" marginTop={16} marginBottom={8}>
-                Local Models
-              </Text>
-              
-              {/* Model URL input or download progress */}
-              {isDownloading ? (
-                <YStack marginBottom={12}>
-                  <Progress value={downloadProgress} max={100} width="100%" height={8}>
-                    <Progress.Indicator animation="bouncy" backgroundColor="$green10" />
-                  </Progress>
-                  <Text fontSize={12} marginTop={4} textAlign="center">
-                    Downloading model... {Math.round(downloadProgress)}%
+            <Tabs 
+              orientation="horizontal" 
+              flexDirection="column" 
+              defaultValue="local"
+            >
+              <Tabs.List
+                disablePassBorderRadius="bottom"
+                aria-label="Manage your account"
+              >
+                <Tabs.Tab value="local" flex={1}>
+                  <Text fontSize={16} fontWeight="500" marginTop={8} marginBottom={8}>
+                    Local Models
                   </Text>
-                </YStack>
-              ) : (
-                <XStack alignItems="center" marginBottom={8}>
-                  <Input 
-                    flex={1}
-                    size="$4"
-                    placeholder="Custom HuggingFace GGUF URL" 
-                    value={modelUrl}
-                    onChangeText={text => {
-                      setModelUrl(text);
-                      setErrorMessage('');
-                    }}
-                  />
-                  <Button
-                    marginLeft={8}
-                    size="$4"
-                    icon={Download}
-                    onPress={() => handleModelDownload()}
-                    disabled={!modelUrl.trim()}
-                  >
-                    Add
-                  </Button>
-                </XStack>
-              )}
-              
-              {/* Error message */}
-              {errorMessage ? (
-                <Text color="$red10" fontSize={12} marginBottom={8}>
-                  {errorMessage}
-                </Text>
-              ) : null}
+                </Tabs.Tab>
+                <Tabs.Tab value="api" flex={1}>
+                  <Text fontSize={16} fontWeight="500" marginTop={8} marginBottom={8}>
+                    API Providers
+                  </Text>
+                </Tabs.Tab>
+              </Tabs.List>
+              <Tabs.Content value="local" paddingTop={16}>
+                <ScrollView showsVerticalScrollIndicator={false}>
 
-              {/* recommended models section */}
-              {RECOMMENDED_MODELS.filter(model => !availableModels.some(localModel => localModel.value === extractModelNameFromUrl(model.url))).map((model) => (
-                <XStack key={model.url} alignItems="center" marginBottom={8}>
-                  <Button
-                    flex={1}
-                    size="$4"
-                    // icon={Check}
-                    disabled
-                    opacity={0.5}
-                  >
-                    {extractModelNameFromUrl(model.url)}
-                  </Button>
-                  <Button
-                    marginLeft={8}
-                    size="$4"
-                    icon={Download}
-                    disabled={isDownloading}
-                    opacity={isDownloading ? 0.5 : 1}
-                    onPress={() => {
-                    handleModelDownload(model.url)
-                  }}
-                  />
-                </XStack>
-              ))} 
-              
-              {/* List of local models */}
-              {availableModels.filter(model => model.isLocal).map(model => (
-                <XStack key={model?.value} alignItems="center" marginBottom={8}>
-                  <Button
-                    flex={1}
-                    size="$4"
-                    icon={Check}
-                    disabled
-                    opacity={0.6}
-                  >
-                    {/* {truncateModelName(model?.name || '')} */}
-                    {model.value}
-                  </Button>
-                  <Button
-                    marginLeft={8}
-                    size="$4"
-                    theme="red"
-                    icon={Trash}
-                    onPress={() => handleDeleteModel(model.value)}
-                  />
-                </XStack>
-              ))}
-              
+                  {/* Model URL input or download progress */}
+                  {isDownloading ? (
+                    <YStack marginBottom={12}>
+                      <Progress value={downloadProgress} max={100} width="100%" height={8}>
+                        <Progress.Indicator animation="bouncy" backgroundColor="$green10" />
+                      </Progress>
+                      <Text fontSize={12} marginTop={4} textAlign="center">
+                        Downloading model... {Math.round(downloadProgress)}%
+                      </Text>
+                    </YStack>
+                  ) : (
+                    <XStack alignItems="center" marginBottom={8}>
+                      <Input 
+                        flex={1}
+                        size="$4"
+                        placeholder="Custom HuggingFace GGUF URL" 
+                        value={modelUrl}
+                        onChangeText={text => {
+                          setModelUrl(text);
+                          setErrorMessage('');
+                        }}
+                      />
+                      <Button
+                        marginLeft={8}
+                        size="$4"
+                        icon={Download}
+                        onPress={() => handleModelDownload()}
+                        disabled={!modelUrl.trim()}
+                      />
+                    </XStack>
+                  )}
+                  
+                  {/* Error message */}
+                  {errorMessage ? (
+                    <Text color="$red10" fontSize={12} marginBottom={8}>
+                      {errorMessage}
+                    </Text>
+                  ) : null}
 
-              <Text fontSize={16} fontWeight="500" marginTop={16} marginBottom={8}>
-                API Providers
-              </Text>
+                  {/* recommended models section */}
+                  {RECOMMENDED_MODELS.filter(model => !availableModels.some(localModel => localModel.value === extractModelNameFromUrl(model.url))).map((model) => (
+                    <XStack key={model.url} alignItems="center" marginBottom={8}>
+                      <Button
+                        flex={1}
+                        size="$4"
+                        // icon={Check}
+                        disabled
+                        opacity={0.5}
+                      >
+                        {extractModelNameFromUrl(model.url)}
+                      </Button>
+                      <Button
+                        marginLeft={8}
+                        size="$4"
+                        icon={Download}
+                        disabled={isDownloading}
+                        opacity={isDownloading ? 0.5 : 1}
+                        onPress={() => {
+                        handleModelDownload(model.url)
+                      }}
+                      />
+                    </XStack>
+                  ))} 
+                  
+                  {/* List of local models */}
+                  {availableModels.filter(model => model.isLocal).map(model => (
+                    <XStack key={model?.value} alignItems="center" marginBottom={8}>
+                      <Button
+                        flex={1}
+                        size="$4"
+                        icon={Check}
+                        disabled
+                        opacity={0.6}
+                      >
+                        {/* {truncateModelName(model?.name || '')} */}
+                        {model.value}
+                      </Button>
+                      <Button
+                        marginLeft={8}
+                        size="$4"
+                        theme="red"
+                        icon={Trash}
+                        onPress={() => handleDeleteModel(model.value)}
+                      />
+                    </XStack>
+                  ))}
+                </ScrollView>
+
+              </Tabs.Content>
+              <Tabs.Content value="api" paddingTop={16}>
+
+              <ScrollView>
 
               {(providers).map(provider => (
                 <XStack key={provider.name} alignItems="center" marginBottom={8}>
@@ -314,8 +329,22 @@ export function SettingsSheet({
                 )}
               </XStack>
               ))}
-              
-            </ScrollView>
+              </ScrollView>
+              </Tabs.Content>
+            </Tabs>
+
+            <YStack marginTop={16} gap="$4">
+              <Text fontSize={16} fontWeight="500" marginBottom={8}>
+                Token generation limit: {tokenGenerationLimit}
+              </Text>
+              <Slider size="$1" width='100%' defaultValue={[tokenGenerationLimit]} max={2500} min={100} step={25} onValueChange={(value: number[]) => setTokenGenerationLimit(value[0])}>
+                <Slider.Track>
+                  <Slider.TrackActive />
+                </Slider.Track>
+                <Slider.Thumb circular index={0} />
+              </Slider>
+            </YStack>
+            
           </YStack>
         </Animated.View>
       </Animated.View>

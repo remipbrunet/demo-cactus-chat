@@ -8,7 +8,8 @@ export async function streamOpenAICompletion(
   model: string,
   onProgress: (text: string) => void,
   onComplete: (modelMetrics: ModelMetrics) => void,
-  streaming: boolean = true
+  streaming: boolean = true,
+  maxTokens: number
 ) {
   try {
     const apiKey = await getApiKey('OpenAI');
@@ -39,6 +40,7 @@ export async function streamOpenAICompletion(
         model,
         messages: formattedMessages,
         stream: true,
+        max_tokens: maxTokens,
         stream_options: { include_usage: true }
       }
 

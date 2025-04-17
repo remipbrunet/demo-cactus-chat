@@ -33,7 +33,7 @@ export default function ChatScreen() {
   const [allConversations, setAllConversations] = useState<Conversation[]>([]);
   const scrollViewRef = useRef<any>(null);
 
-  const { selectedModel } = useModelContext();
+  const { selectedModel, tokenGenerationLimit } = useModelContext();
   
   // Single ref for streaming updates
   const streamingUpdateRef = useRef<{
@@ -184,7 +184,9 @@ export default function ChatScreen() {
             scrollViewRef.current?.scrollToEnd({ animated: true });
             return updated;
           });
-        }
+        },
+        { streaming: true },
+        tokenGenerationLimit
       );      
     } catch (error) {
       console.error('Error in chat:', error);
@@ -260,6 +262,7 @@ export default function ChatScreen() {
             flex={1} 
             bounces={false}
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
             {messages.map(message => (
               <ChatMessage key={message.id} message={message} />

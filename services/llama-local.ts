@@ -8,7 +8,8 @@ export async function streamLlamaCompletion(
   model: Model,
   onProgress: (text: string) => void,
   onComplete: (modelMetrics: ModelMetrics) => void,
-  streaming: boolean = true
+  streaming: boolean = true,
+  maxTokens: number
 ) {
   try {
     console.log('Ensuring Llama context...', new Date().toISOString());
@@ -47,7 +48,7 @@ export async function streamLlamaCompletion(
       const result = await context.completion(
         {
           messages: formattedMessages,
-          n_predict: 256,
+          n_predict: maxTokens,
           stop: stopWords,
         },
         (data: any) => {

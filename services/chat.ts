@@ -26,7 +26,8 @@ export async function sendChatMessage(
   model: Model,
   onProgress: ChatProgressCallback,
   onComplete: ChatCompleteCallback,
-  options: ChatOptions = { streaming: true }
+  options: ChatOptions = { streaming: true },
+  maxTokens: number
 ): Promise<void> {
   try {
     switch (model.provider) {
@@ -36,7 +37,8 @@ export async function sendChatMessage(
           model.value, 
           onProgress, 
           onComplete, 
-          options.streaming
+          options.streaming,
+          maxTokens,
         );
         
       case 'Anthropic':
@@ -45,7 +47,8 @@ export async function sendChatMessage(
           model.value, 
           onProgress, 
           onComplete, 
-          options.streaming
+          options.streaming,
+          maxTokens,
         );
         
       case 'Google':
@@ -54,7 +57,8 @@ export async function sendChatMessage(
           model.value, 
           onProgress, 
           onComplete, 
-          options.streaming
+          options.streaming,
+          maxTokens,
         );
         
       case 'Cactus':
@@ -63,7 +67,8 @@ export async function sendChatMessage(
           model, 
           onProgress, 
           onComplete, 
-          options.streaming
+          options.streaming,
+          maxTokens,
         );
         
       default:

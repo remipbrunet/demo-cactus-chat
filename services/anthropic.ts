@@ -1,14 +1,14 @@
 import { getApiKey } from './storage';  
 import { Message } from '@/components/ChatMessage';
 import { ModelMetrics } from '@/utils/modelMetrics';
-import EventSource from 'react-native-sse';
 
 export async function streamAnthropicCompletion(
   messages: Message[],
   model: string,
   onProgress: (text: string) => void,
   onComplete: (modelMetrics: ModelMetrics) => void,
-  streaming: boolean = true
+  streaming: boolean = true,
+  maxTokens: number
 ) {
   try {
     const apiKey = await getApiKey('Anthropic');
@@ -36,7 +36,7 @@ export async function streamAnthropicCompletion(
 
       const payload = {
         model,
-        max_tokens: 1024,
+        max_tokens: maxTokens,
         messages: formattedMessages,
         stream: true,
       }

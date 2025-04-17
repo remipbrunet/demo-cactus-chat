@@ -9,6 +9,8 @@ interface ModelContextType {
     hasOpenAIKey: boolean;
     hasAnthropicKey: boolean;
     hasGeminiKey: boolean;
+    tokenGenerationLimit: number;
+    setTokenGenerationLimit: (limit: number) => void;
 }
 
 const ModelContext = createContext<ModelContextType>({
@@ -19,6 +21,8 @@ const ModelContext = createContext<ModelContextType>({
     hasOpenAIKey: false,
     hasAnthropicKey: false,
     hasGeminiKey: false,
+    tokenGenerationLimit: 50,
+    setTokenGenerationLimit: () => {},
 });
 
 export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
@@ -28,6 +32,7 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   const [hasOpenAIKey, setHasOpenAIKey] = useState<boolean>(false);
   const [hasAnthropicKey, setHasAnthropicKey] = useState<boolean>(false);
   const [hasGeminiKey, setHasGeminiKey] = useState<boolean>(false);
+  const [tokenGenerationLimit, setTokenGenerationLimit] = useState<number>(200);
 
   function refreshModels() {
     setModelsVersion(modelsVersion + 1);
@@ -49,7 +54,7 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   }, [modelsVersion])
 
   return (
-  <ModelContext.Provider value={{ availableModels, selectedModel, setSelectedModel, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey }}>
+  <ModelContext.Provider value={{ availableModels, selectedModel, setSelectedModel, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey, tokenGenerationLimit, setTokenGenerationLimit }}>
     {children}
   </ModelContext.Provider>
   )
