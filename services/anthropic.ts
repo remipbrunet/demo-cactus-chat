@@ -1,6 +1,7 @@
 import { getApiKey } from './storage';  
 import { Message } from '@/components/ChatMessage';
 import { ModelMetrics } from '@/utils/modelMetrics';
+import EventSource from 'react-native-sse';
 
 export async function streamAnthropicCompletion(
   messages: Message[],
