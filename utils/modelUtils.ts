@@ -1,8 +1,8 @@
 import * as FileSystem from 'expo-file-system';
-import { Platform } from 'react-native';
-import { storeLocalModel } from '../services/storage';
+import { getFullModelPath, getModelDirectory, storeLocalModel } from '../services/storage';
 import { Model } from '../services/models';
 // Truncate model name with ellipsis if too long
+
 export const truncateModelName = (name: string, maxLength = 17) => 
   name?.length > maxLength ? name.substring(0, maxLength - 1) + '…' : name;
 
@@ -60,18 +60,13 @@ export async function downloadModel(url: string, onProgress: (progress: number) 
   }
   
   // Create local models directory 
-  const modelDir = Platform.OS === 'ios' 
-    ? `${FileSystem.documentDirectory}local-models/`
-    : `${FileSystem.cacheDirectory}local-models/`;
+  const modelDir = getModelDirectory();
   await FileSystem.makeDirectoryAsync(modelDir, { intermediates: true }).catch(() => {});
-  
-  // Full path to downloaded file
-  const modelPath = `${modelDir}${fileName}`;
   
   // Download the file
   await FileSystem.createDownloadResumable(
     url,
-    modelPath,
+    getFullModelPath(fileName),
     {},
     progress => onProgress(Math.floor((progress.totalBytesWritten * 100) / progress.totalBytesExpectedToWrite))
   ).downloadAsync();
@@ -83,7 +78,7 @@ export async function downloadModel(url: string, onProgress: (progress: number) 
     provider: 'Cactus',
     disabled: false,
     isLocal: true,
-    meta: { filePath: modelPath }
+    meta: { fileName: fileName }
   };
   
   await storeLocalModel(model);

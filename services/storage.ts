@@ -3,6 +3,37 @@ import { Message } from '@/components/ChatMessage';
 import { Model } from '@/services/models';
 import * as FileSystem from 'expo-file-system';
 import { Provider } from '@/services/models';
+import { supabase } from '@/services/supabase';
+import { Platform } from 'react-native';
+import { getBrand, getModel, getSystemVersion } from 'react-native-device-info';
+
+export const getModelDirectory = () => 
+  Platform.OS === 'ios' 
+    ? `${FileSystem.documentDirectory}local-models/`
+    : `${FileSystem.cacheDirectory}local-models/`;
+
+export const getFullModelPath = (fileName: string) => 
+  `${getModelDirectory()}${fileName}`;
+
+interface RegisterDeviceResponse {
+  success: boolean;
+  deviceId: string | null;
+}
+
+export async function registerDevice(): Promise<RegisterDeviceResponse> {
+  const { data, error } = await supabase.from('devices').insert({
+      // brand: 'Unknown',
+      // model: 'Unknown',
+      // os_version: 'Unknown',
+      brand: getBrand(),
+      model: getModel(),
+      os_version: getSystemVersion(),
+  }).select()
+  if (error) {
+      return { success: false, deviceId: null };
+  }
+  return { success: true, deviceId: data?.[0]?.id.toString() };
+}
 
 // Conversation structure
 export interface Conversation {
@@ -21,6 +52,26 @@ interface ConversationsStore {
 // Keys for AsyncStorage
 const STORAGE_KEY = '@cactus_conversations';
 const LAST_MODEL_KEY = '@last_used_model';
+const DEVICE_ID_KEY = '@device_id';
+
+async function registerDeviceIfNotRegistered(): Promise<string | null> {
+  const {success, deviceId} = await registerDevice();
+  if (success && deviceId) {
+    await AsyncStorage.setItem(DEVICE_ID_KEY, deviceId);
+    return deviceId;
+  }
+  return null;
+}
+
+export async function getDeviceId(): Promise<number | null> {
+  let deviceId = await AsyncStorage.getItem(DEVICE_ID_KEY);
+  if (!deviceId) {
+    console.log('No device id found, registering device')
+    deviceId = await registerDeviceIfNotRegistered();
+    console.log('Device id registered', deviceId);
+  }
+  return parseInt(deviceId || '0');
+}
 
 // Save a single conversation
 export async function saveConversation(conversation: Conversation): Promise<void> {
@@ -140,7 +191,7 @@ export const removeLocalModel = async (id: string) => {
   const localModel = await AsyncStorage.getItem(`local_model_${id}`);
   if (localModel) {
     const model = JSON.parse(localModel) as Model;
-    await FileSystem.deleteAsync(model.meta?.filePath || '');
+    await FileSystem.deleteAsync(getFullModelPath(model.meta?.fileName || ''));
     await AsyncStorage.removeItem(`local_model_${id}`);
   }
 }

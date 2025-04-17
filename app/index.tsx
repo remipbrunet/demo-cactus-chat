@@ -17,6 +17,8 @@ import {
 import { ModelMetrics } from '@/utils/modelMetrics';
 import { Message } from '@/components/ChatMessage';
 import { useModelContext } from '@/contexts/modelContext';
+import { logChatCompletionDiagnostics } from '@/services/diagnostics';
+
 export default function ChatScreen() {
   const [open, setOpen] = useState(false);
   // const [value, setValue] = useState<string | null>(null);
@@ -162,7 +164,15 @@ export default function ChatScreen() {
             cancelAnimationFrame(streamingUpdateRef.current.frameId);
             streamingUpdateRef.current.frameId = null;
           }
-          
+          console.log('logging diagnostics')
+          logChatCompletionDiagnostics({
+            llm_model: selectedModel.value,
+            tokens_per_second: modelMetrics.tokensPerSecond,
+            time_to_first_token: modelMetrics.timeToFirstToken,
+            generated_tokens: modelMetrics.completionTokens,
+            streaming: true,
+          });
+          console.log('logged diagnostics')
           // Save the updated conversation
           setMessages(prev => {
             const updated = [...prev];
