@@ -46,9 +46,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
           heading4: { fontSize: 16, lineHeight: 21, fontWeight: '600', marginTop: 10, marginBottom: 10 },
           heading5: { fontSize: 14, lineHeight: 21, fontWeight: '600', marginTop: 10, marginBottom: 10 },
           heading6: { fontSize: 13, lineHeight: 21, fontWeight: '600', marginTop: 10, marginBottom: 10 },
-          bullet_list_icon: { marginLeft: 5, marginRight: 5 },
-          ordered_list_icon: { marginLeft: 5, marginRight: 5 },
-          // code_block: { fontSize: 14, lineHeight: 21, fontWeight: '400', marginTop: 10, marginBottom: 10 },
+          bullet_list_icon: { marginLeft: 5, marginRight: 5, lineHeight: 21 },
+          ordered_list_icon: { marginLeft: 5, marginRight: 5, lineHeight: 21 },
+          fence: { marginTop: 10, marginBottom: 10 },
         }}>
           {text}
         </Markdown>
