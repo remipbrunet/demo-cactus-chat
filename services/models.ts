@@ -62,7 +62,7 @@ export async function refreshModelAvailability(): Promise<Model[]> {
               model.provider === 'Anthropic' ? !anthropicAvailable :
               model.provider === 'Google' ? !geminiAvailable :
               model.disabled
-  }));
+  })).filter(model => !model.disabled);
 
   const localModels = await getLocalModels();
 

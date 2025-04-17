@@ -19,16 +19,16 @@ let loadedContext: LoadedContext = {
 export const ensureLocalModelContext = async (model: Model): Promise<LlamaContext | null> => {
 
   // If we already have a context, return it
-  console.log('ensuring local model context', model.value);
+  // console.log('ensuring local model context', model.value);
   if (loadedContext && loadedContext.modelValue === model.value) {
     return loadedContext.context
   }
-  console.log('loading new...', model);
+  // console.log('loading new...', model);
 
   if (model.isLocal) {
     const modelPath = getFullModelPath(model.meta?.fileName || '');
     if (model && (await FileSystem.getInfoAsync(modelPath)).exists) {
-      console.log(`Initializing local model: ${model.value} from ${modelPath}`);
+      // console.log(`Initializing local model: ${model.value} from ${modelPath}`);
       loadedContext.modelValue = model.value;
 
       const startTime = performance.now();
@@ -41,11 +41,11 @@ export const ensureLocalModelContext = async (model: Model): Promise<LlamaContex
       const endTime = performance.now();
       logModelLoadDiagnostics({model: model.value, loadTime: endTime - startTime});
 
-      console.log(`Local model initialized: ${model.value}`);
+      // console.log(`Local model initialized: ${model.value}`);
       return loadedContext.context;
     }
     
-    throw new Error(`Local model not found: ${model.value}`);
+    // throw new Error(`Local model not found: ${model.value}`);
   }
 
   return loadedContext.context

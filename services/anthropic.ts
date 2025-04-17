@@ -62,9 +62,6 @@ export async function streamAnthropicCompletion(
               if (!firstTokenTime) {
                 firstTokenTime = performance.now();
                 modelMetrics.timeToFirstToken = firstTokenTime - startTime;
-                console.log('Start time', startTime);
-                console.log('First token time', firstTokenTime);
-                console.log('Time to first token', modelMetrics.timeToFirstToken);
               }
               responseText += delta?.text;
               onProgress(responseText);
@@ -75,19 +72,16 @@ export async function streamAnthropicCompletion(
           }
         },
         message_stop: (event) => {
-          console.log('Message stop', event.data);
           onComplete(modelMetrics);
           es.close();
         },
         message_delta: (event) => {
           const data = JSON.parse(event.data);  
-          console.log('Message delta', data);
           const endTime = performance.now();
           const totalTime = endTime - startTime;
 
           modelMetrics.completionTokens = data.usage.output_tokens;
           modelMetrics.tokensPerSecond = modelMetrics.completionTokens / (totalTime / 1000);
-          console.log('Model metrics', modelMetrics);
         },
         message_start: (event) => {
           console.log('Message start', event.data);

@@ -3,7 +3,7 @@ import { getFullModelPath, getModelDirectory, storeLocalModel } from '../service
 import { Model } from '../services/models';
 // Truncate model name with ellipsis if too long
 
-export const truncateModelName = (name: string, maxLength = 17) => 
+export const truncateModelName = (name: string, maxLength = 15) => 
   name?.length > maxLength ? name.substring(0, maxLength - 1) + '…' : name;
 
 // Extract filename from HuggingFace URL

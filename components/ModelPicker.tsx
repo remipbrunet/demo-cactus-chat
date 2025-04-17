@@ -6,7 +6,7 @@ import { truncateModelName } from '@/utils/modelUtils';
 import { useModelContext } from '@/contexts/modelContext';
 import { saveLastUsedModel } from '@/services/storage';
 import { ensureLocalModelContext } from '@/utils/localModelContext';
-import { YStack, Text, XStack } from 'tamagui';
+import { Text, XStack } from 'tamagui';
 
 const dropdownStyles = {
   container: {
@@ -52,8 +52,6 @@ export function ModelPicker({
 
   const handleChange = async (itemValue: string | undefined) => {
     if (itemValue) {
-      console.log('itemValue', itemValue);
-      console.log('availableModels', availableModels);
       const newlySelectedModel = availableModels.find(model => model.value === itemValue);
       if (newlySelectedModel) {
         const newModelSelected = newlySelectedModel !== selectedModel
