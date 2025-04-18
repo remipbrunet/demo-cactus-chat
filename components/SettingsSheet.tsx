@@ -8,7 +8,6 @@ import { useModelContext } from '@/contexts/modelContext'
 import { ApiKeyDialog } from './ApiKeyDialog'
 import { Provider } from '@/services/models'
 import { extractModelNameFromUrl } from '@/utils/modelUtils'
-import { getTokenGenerationLimit } from '@/services/storage'
 
 // Recommended model for first-time users
 const RECOMMENDED_MODELS = [
@@ -60,31 +59,46 @@ export function SettingsSheet({
       hasKey: hasGeminiKey
     }
   ]
+
   const handleModelDownload = async (urlOverride?: string) => {
     setErrorMessage('');
 
     const urlToDownload = urlOverride || modelUrl;
     
     // Validate URL
-    const validation = validateModelUrl(urlToDownload);
-    if (!validation.valid) {
-      setErrorMessage(validation.reason || 'Invalid URL');
+    const { valid, reason, contentLength } = await validateModelUrl(urlToDownload);
+    if (!valid) {
+      setErrorMessage(reason || 'Invalid URL');
       return;
     }
-    
-    try {
-      setIsDownloading(true);
-      await downloadModel(urlToDownload, setDownloadProgress);
-      setModelUrl('');
-      refreshModels();
-      // Notify parent about successful download
-      // Alert.alert('Success', `Model ${model.label} downloaded successfully`);
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Download failed');
-    } finally {
-      setIsDownloading(false);
-      setDownloadProgress(0);
-    }
+
+    Alert.alert(
+      `Download ${extractModelNameFromUrl(urlToDownload)}`, 
+      `This will download ${contentLength ? (contentLength / 10e8).toFixed(2) + 'GB' : 'unknown size'} of data. We recommend doing this over WiFi.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Download",
+          style: "default",
+          onPress: async () => {
+            try {
+              setIsDownloading(true);
+              await downloadModel(urlToDownload, setDownloadProgress);
+              setModelUrl('');
+              refreshModels();
+            } catch (error: any) {
+              setErrorMessage(error.message || 'Download failed');
+            } finally {
+              setIsDownloading(false);
+              setDownloadProgress(0);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleDeleteApiKey = (provider: Provider) => {

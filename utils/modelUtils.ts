@@ -23,7 +23,7 @@ export function extractModelNameFromUrl(url: string): string | null {
 }
 
 // Validate URL is a proper HuggingFace GGUF download link
-export function validateModelUrl(url: string): { valid: boolean; reason?: string } {
+export async function validateModelUrl(url: string): Promise<{ valid: boolean; reason?: string; contentLength?: number }> {
   if (!url.includes('huggingface.co')) {
     return { valid: false, reason: 'Not a Hugging Face URL' };
   }
@@ -35,16 +35,26 @@ export function validateModelUrl(url: string): { valid: boolean; reason?: string
   if (!url.includes('/resolve/')) {
     return { valid: false, reason: 'Not a download link. URL must contain /resolve/' };
   }
+
+  const response = await fetch(url, {method: 'HEAD'});
+  if (response.status !== 200) {
+    return { valid: false, reason: 'Model not found' };
+  }
+
+  const contentLength = parseInt(response.headers.get('content-length') || '0');
+  if (contentLength === 0) {
+    return { valid: false, reason: 'Model is empty' };
+  }
   
-  return { valid: true };
+  return { valid: true, contentLength };
 }
 
 // Download a model and return its path
 export async function downloadModel(url: string, onProgress: (progress: number) => void): Promise<Model> {
   // Validate URL
-  const validation = validateModelUrl(url);
-  if (!validation.valid) {
-    throw new Error(validation.reason);
+  const { valid, reason } = await validateModelUrl(url);
+  if (!valid) {
+    throw new Error(reason);
   }
   
   // Extract filename from URL
