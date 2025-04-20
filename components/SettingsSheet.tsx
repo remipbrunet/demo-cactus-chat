@@ -8,14 +8,17 @@ import { useModelContext } from '@/contexts/modelContext'
 import { ApiKeyDialog } from './ApiKeyDialog'
 import { Provider } from '@/services/models'
 import { extractModelNameFromUrl } from '@/utils/modelUtils'
+import { VoiceLogger } from '@/components/VoiceLogger'
 
 // Recommended model for first-time users
 const RECOMMENDED_MODELS = [
   {
-    url: "https://huggingface.co/unsloth/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q8_0.gguf"
+    url: "https://huggingface.co/unsloth/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q8_0.gguf",
+    name: "SmolLM 135M"
   },
   {
-    url: "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q8_0.gguf"
+    url: "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q8_0.gguf",
+    name: "Gemma 3 1B"
   }
 ];
 
@@ -285,7 +288,8 @@ export function SettingsSheet({
                         disabled
                         opacity={0.5}
                       >
-                        {extractModelNameFromUrl(model.url)}
+                        {/* {extractModelNameFromUrl(model.url)} */}
+                        {model.name}
                       </Button>
                       <Button
                         marginLeft={8}
@@ -374,6 +378,8 @@ export function SettingsSheet({
                 <Slider.Thumb circular index={0} />
               </Slider>
             </YStack>
+
+            <VoiceLogger/>
             
           </YStack>
         </Animated.View>

@@ -1,5 +1,5 @@
 import { XStack, YStack, Input, Button, ScrollView, Spinner, Text } from 'tamagui';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Menu, Settings, Send } from '@tamagui/lucide-icons';
@@ -7,7 +7,7 @@ import { ChatMessage } from '../components/ChatMessage';
 import { ModelPicker } from '../components/ModelPicker';
 import { ConversationSidebar } from '../components/ConversationSidebar';
 import { SettingsSheet } from '../components/SettingsSheet';
-import { sendChatMessage, generateUniqueId } from '@/services/chat';
+import { sendChatMessage, generateUniqueId } from '@/services/chat/chat';
 import { 
   Conversation, 
   saveConversation, 
@@ -18,13 +18,13 @@ import { ModelMetrics } from '@/utils/modelMetrics';
 import { Message } from '@/components/ChatMessage';
 import { useModelContext } from '@/contexts/modelContext';
 import { logChatCompletionDiagnostics } from '@/services/diagnostics';
+import { MessageInput } from '@/components/MessageInput';
+import { Model } from '@/services/models';
 
 export default function ChatScreen() {
   const [open, setOpen] = useState(false);
-  // const [value, setValue] = useState<string | null>(null);
-  // const [selectedModel, setSelectedModel] = useState<Model | null>(null);
-  const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
+  const [ currentAIMessage, setCurrentAIMessage ] = useState<string>('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [modelIsLoading, setModelIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string>(generateUniqueId());
@@ -103,114 +103,94 @@ export default function ChatScreen() {
     setMessages([]);
   };
 
-  const sendMessage = async () => {
+  function processFinishedMessage(message: string, model: Model, modelMetrics?: ModelMetrics) {
+    // cleanup function when the streaming ends
+    // called either when the streaming is complete or when there is an error
+    setIsStreaming(false);
+    setCurrentAIMessage("");
+    setMessages(prev => {
+      const updated = [...prev];
+      if (updated.length > 0) {
+        const AImessage: Message = {
+          id: generateUniqueId(),
+          isUser: false,
+          text: message,
+          model: model,
+          metrics: modelMetrics
+        }
+        updated.push(AImessage);
+      }
+      saveCurrentConversation(updated); // save to storage
+      getConversations().then(setAllConversations); // update the conversations list
+      // scrollViewRef.current?.scrollToEnd({ animated: true }); // scroll to the bottom
+      streamingUpdateRef.current.text = ''; // clear the streaming text
+      return updated;
+    });
+  }
+
+  function chatCallbackPartialMessage(streamText: string) {
+    streamingUpdateRef.current.text = streamText;
+    // Only schedule a frame if one isn't already pending
+    if (streamingUpdateRef.current.frameId === null) {
+      streamingUpdateRef.current.frameId = requestAnimationFrame(() => {
+        setCurrentAIMessage(streamingUpdateRef.current.text);
+        streamingUpdateRef.current.frameId = null;
+      });
+    }
+  }
+
+  function chatCallbackCompleteMessage(modelMetrics: ModelMetrics, model: Model) {
+    setIsStreaming(false);
+    
+    if (streamingUpdateRef.current.frameId !== null) {
+      cancelAnimationFrame(streamingUpdateRef.current.frameId);
+      streamingUpdateRef.current.frameId = null;
+    }
+    logChatCompletionDiagnostics({
+      llm_model: model.value,
+      tokens_per_second: modelMetrics.tokensPerSecond,
+      time_to_first_token: modelMetrics.timeToFirstToken,
+      generated_tokens: modelMetrics.completionTokens,
+      streaming: true,
+    });
+    processFinishedMessage(streamingUpdateRef.current.text.trimEnd(), model, modelMetrics);
+  }
+
+  const sendMessage = async (inputText: string) => {
     if (!inputText.trim() || isStreaming) return;
     if (!selectedModel) return;
-    // Add user message
+
     const userMessage: Message = {
       id: generateUniqueId(),
       isUser: true,
       text: inputText,
       model: selectedModel
     };
-    
+
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
-    setInputText('');
+    saveCurrentConversation(updatedMessages); 
     
-    // Save conversation with the user message
-    await saveCurrentConversation(updatedMessages);
-
-    // Add placeholder for assistant response
-    const assistantMessage: Message = {
-      id: generateUniqueId(),
-      isUser: false,
-      text: '...',
-      model: selectedModel
-    };
-    
-    const messagesWithAssistant = [...updatedMessages, assistantMessage];
-    setMessages(messagesWithAssistant);
     setIsStreaming(true);
     try {
       await sendChatMessage(
         updatedMessages,
         selectedModel,
-        (streamText: string) => {
-          // Store the latest text
-          streamingUpdateRef.current.text = streamText;
-          
-          // Only schedule a frame if one isn't already pending
-          if (streamingUpdateRef.current.frameId === null) {
-            streamingUpdateRef.current.frameId = requestAnimationFrame(() => {
-              setMessages(prev => {
-                const updated = [...prev];
-                const lastMessage = updated[updated.length - 1];
-                if (!lastMessage.isUser) {
-                  lastMessage.text = streamingUpdateRef.current.text;
-                }
-                return updated;
-              });
-              streamingUpdateRef.current.frameId = null;
-            });
-          }
-        },
-        (modelMetrics: ModelMetrics) => {
-          // Final update when streaming completes
-          setIsStreaming(false);
-          
-          // Cancel any pending frame
-          if (streamingUpdateRef.current.frameId !== null) {
-            cancelAnimationFrame(streamingUpdateRef.current.frameId);
-            streamingUpdateRef.current.frameId = null;
-          }
-          logChatCompletionDiagnostics({
-            llm_model: selectedModel.value,
-            tokens_per_second: modelMetrics.tokensPerSecond,
-            time_to_first_token: modelMetrics.timeToFirstToken,
-            generated_tokens: modelMetrics.completionTokens,
-            streaming: true,
-          });
-          // Save the updated conversation
-          setMessages(prev => {
-            const updated = [...prev];
-            const lastMessage = updated[updated.length - 1];
-            lastMessage.text = streamingUpdateRef.current.text.trimEnd();
-            lastMessage.metrics = modelMetrics;
-            saveCurrentConversation(updated);
-            getConversations().then((conversations) => {
-              setAllConversations(conversations);
-            });
-            scrollViewRef.current?.scrollToEnd({ animated: true });
-            return updated;
-          });
-        },
+        chatCallbackPartialMessage,
+        chatCallbackCompleteMessage,
         { streaming: true },
         tokenGenerationLimit
       );      
     } catch (error) {
       console.error('Error in chat:', error);
-      setIsStreaming(false);
-      
-      // Update the message to show error
-      setMessages(prev => {
-        const updated = [...prev];
-        const lastMessage = updated[updated.length - 1];
-        if (!lastMessage.isUser) {
-          lastMessage.text = 'Sorry, there was an error processing your request.';
-        }
-        
-        // Save the conversation even with the error
-        saveCurrentConversation(updated);
-        return updated;
-      });
+      processFinishedMessage('Sorry, there was an error processing your request.', selectedModel, undefined);
     }
 
     // Scroll to bottom
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
-  };
+  }
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -264,31 +244,21 @@ export default function ChatScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {messages.map(message => (
+            {([...messages, ...(currentAIMessage ? [{
+              id: generateUniqueId(),
+              isUser: false,
+              text: currentAIMessage,
+              model: selectedModel
+            } as Message] : [])]).map(message => (
               <ChatMessage key={message.id} message={message} />
             ))}
           </ScrollView>
-          <XStack paddingVertical={16}>
-            <Input 
-              flex={1} 
-              marginRight={8}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder="Message..."
-              onSubmitEditing={sendMessage}
-            />
-            {(!isStreaming && !modelIsLoading) ?
-              <Button 
-                icon={Send}
-                onPress={sendMessage}
-                disabled={!selectedModel || inputText.trim() === ''}
-                opacity={!selectedModel || inputText.trim() === '' ? 0.25 : 1}
-              /> :
-              <YStack padding="$3" alignItems="center" justifyContent="center">
-                <Spinner size="small" />
-              </YStack>
-            }
-          </XStack>
+          <MessageInput 
+            sendMessage={sendMessage}
+            isStreaming={isStreaming}
+            modelIsLoading={modelIsLoading}
+            selectedModel={selectedModel}
+          />
         </YStack>
       </KeyboardAvoidingView>
       

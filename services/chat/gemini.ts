@@ -1,13 +1,15 @@
-import { getApiKey } from './storage';
+import { getApiKey } from '../storage';
 import { Message } from '@/components/ChatMessage';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import EventSource from 'react-native-sse';
+import { ChatCompleteCallback, ChatProgressCallback } from './chat';
+import { Model } from '../models';
 
 export async function streamGeminiCompletion(
   messages: Message[],
-  model: string,
-  onProgress: (text: string) => void,
-  onComplete: (modelMetrics: ModelMetrics) => void,
+  model: Model,
+  onProgress: ChatProgressCallback,
+  onComplete: ChatCompleteCallback,
   streaming: boolean = true,
   maxTokens: number
 ) {
@@ -41,7 +43,7 @@ export async function streamGeminiCompletion(
       }
 
       // We've already checked apiKey is not null above
-      const url = new URL(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}`);
+      const url = new URL(`https://generativelanguage.googleapis.com/v1beta/models/${model.value}:streamGenerateContent?key=${apiKey}`);
       url.searchParams.append('alt', 'sse');
       
       const es = new EventSource(url.toString(), {
@@ -79,7 +81,7 @@ export async function streamGeminiCompletion(
                     modelMetrics.completionTokens = data.usageMetadata.candidatesTokenCount
                     modelMetrics.tokensPerSecond = modelMetrics.completionTokens / (totalTime / 1000);
 
-                    onComplete(modelMetrics);
+                    onComplete(modelMetrics, model);
                     es.close();
                 }
             }

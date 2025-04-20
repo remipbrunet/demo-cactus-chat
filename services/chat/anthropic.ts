@@ -1,13 +1,15 @@
-import { getApiKey } from './storage';  
+import { getApiKey } from '../storage';  
 import { Message } from '@/components/ChatMessage';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import EventSource from 'react-native-sse';
+import { ChatCompleteCallback, ChatProgressCallback } from './chat';
+import { Model } from '../models';
 
 export async function streamAnthropicCompletion(
   messages: Message[],
-  model: string,
-  onProgress: (text: string) => void,
-  onComplete: (modelMetrics: ModelMetrics) => void,
+  model: Model,
+  onProgress: ChatProgressCallback,
+  onComplete: ChatCompleteCallback,
   streaming: boolean = true,
   maxTokens: number
 ) {
@@ -36,7 +38,7 @@ export async function streamAnthropicCompletion(
     if (streaming) {
 
       const payload = {
-        model,
+        model: model.value,
         max_tokens: maxTokens,
         messages: formattedMessages,
         stream: true,
@@ -73,7 +75,7 @@ export async function streamAnthropicCompletion(
           }
         },
         message_stop: (event) => {
-          onComplete(modelMetrics);
+          onComplete(modelMetrics, model);
           es.close();
         },
         message_delta: (event) => {

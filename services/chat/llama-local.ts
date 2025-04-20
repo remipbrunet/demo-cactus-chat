@@ -1,13 +1,14 @@
 import { Message } from '@/components/ChatMessage';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import { ensureLocalModelContext } from '@/utils/localModelContext';
-import { Model } from './models';
+import { Model } from '../models';
+import { ChatCompleteCallback, ChatProgressCallback } from './chat';
 
 export async function streamLlamaCompletion(
   messages: Message[],
   model: Model,
-  onProgress: (text: string) => void,
-  onComplete: (modelMetrics: ModelMetrics) => void,
+  onProgress: ChatProgressCallback,
+  onComplete: ChatCompleteCallback,
   streaming: boolean = true,
   maxTokens: number
 ) {
@@ -66,7 +67,7 @@ export async function streamLlamaCompletion(
       const endTime = performance.now();
       modelMetrics.completionTokens = result.timings?.predicted_n
       modelMetrics.tokensPerSecond = result.timings?.predicted_per_second
-      onComplete(modelMetrics);
+      onComplete(modelMetrics, model);
     } else {
       const result = await context.completion({
         messages: formattedMessages,
@@ -79,7 +80,7 @@ export async function streamLlamaCompletion(
       modelMetrics.completionTokens = result.timings?.predicted_n
       modelMetrics.tokensPerSecond = result.timings?.predicted_per_second
       onProgress(responseText);
-      onComplete(modelMetrics);
+      onComplete(modelMetrics, model);
     }
   } catch (error) {
     console.error('Error during Llama completion:', error);
