@@ -20,7 +20,7 @@ import { useModelContext } from '@/contexts/modelContext';
 import { logChatCompletionDiagnostics } from '@/services/diagnostics';
 import { MessageInput } from '@/components/MessageInput';
 import { Model } from '@/services/models';
-import { FullScreenOverlay } from '@/components/VoiceLogger';
+import { FullScreenOverlay } from '@/components/VoiceModeScreen';
 
 export default function ChatScreen() {
   const [open, setOpen] = useState(false);

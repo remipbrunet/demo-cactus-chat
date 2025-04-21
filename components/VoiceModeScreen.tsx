@@ -2,7 +2,7 @@ import { YStack, Button, Text } from 'tamagui';
 import { X, Mic, Play } from '@tamagui/lucide-icons'; // Import the X icon
 import { useModelContext } from '../contexts/modelContext';
 import { generateUniqueId, sendChatMessage } from '../services/chat/chat';
-import { Message } from '../components/ChatMessage';
+import { Message } from './ChatMessage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { startRecognizing, stopRecognizing } from '../utils/voiceFunctions';
 import Voice, { SpeechResultsEvent, SpeechRecognizedEvent, SpeechEndEvent } from '@react-native-voice/voice';
@@ -33,21 +33,24 @@ export const FullScreenOverlay = ({
   const appleVoice = 'com.apple.speech.voice.Alex';
   const appleLanguage = 'en-US';
 
+  const voiceDebug = useCallback(() => {
+    Tts.speak(`Invoking ${selectedModel?.value} from ${transcribedWordsRef.current[0]} to ${transcribedWordsRef.current[transcribedWordsRef.current.length - 1]}`, {
+      iosVoiceId: appleVoice,
+      rate: 0.5,
+      androidParams: {
+        KEY_PARAM_STREAM: 'STREAM_MUSIC',
+        KEY_PARAM_VOLUME: 1.0,
+        KEY_PARAM_PAN: 0.0
+      }
+    });
+  }, [transcribedWordsRef.current, selectedModel]);
+
   useEffect(() => {
     selectedModelRef.current = selectedModel;
   }, [selectedModel]); // Update ref whenever context value changes
 
   async function invokeLLM(input: string[]) {
     const currentModel = selectedModelRef.current; // <<< Use Ref for model
-    // Tts.speak(`Invoking ${currentModel?.value} from ${input[0]} to ${input[input.length - 1]}`, {
-    //   iosVoiceId: appleVoice,
-    //   rate: 0.5,
-    //   androidParams: {
-    //     KEY_PARAM_STREAM: 'STREAM_MUSIC',
-    //     KEY_PARAM_VOLUME: 1.0,
-    //     KEY_PARAM_PAN: 0.0
-    //   }
-    // });
     
     console.log('CACTUSDEBUG Transcribed Text:', input.join(' ')); // Log the joined results
     setIsProcessing(true);
@@ -170,38 +173,38 @@ export const FullScreenOverlay = ({
         zIndex={zIndex + 1} 
       />
 
-      <Button
-        icon={<Mic size="$10"/>}
-        chromeless
-        circular
-        size="$10" // Keep the visual size
-        padding="$2" // Keep the internal padding
-        onPressIn={() => {transcribedWordsRef.current = []; setTranscribedWords([]); startRecognizing(setErrorMessage, setIsListening)}}
-        onPressOut={() => stopRecognizing(setErrorMessage)}
-        // onPress={() => {
-        //   invokeLLM(["what", "is", "the", "capital", "of", "the", "UK?"])
-        // }}
-        hitSlop={100}
-        pressStyle={{ 
-          backgroundColor: 'transparent',
-          borderColor: 'transparent',
-          opacity: 1
-        }}
-      />
-      {/* <Button
-        icon={<Play size="$10"/>}
-        chromeless
-        circular
-        size="$10" // Keep the visual size
-        padding="$2" // Keep the internal padding
-        onPress={async () => {
-          await invokeLLM(["what is the capital of the UK?"])
-        }}
-      /> */}
-      {!isListening && <Text>Press and hold to speak</Text>}
-      {transcribedWords && <Text>{transcribedWords.join(' ')}</Text>}
-      {AImessage && <Text>{AImessage}</Text>}
-      {errorMessage && <Text color="$red10">Error: {errorMessage}</Text>}
+      <YStack 
+        position='absolute' 
+        top='50%' 
+        left='0%' 
+        transform={[{ translateY: '-50%' }]}
+        gap="$5"
+        alignItems="center"
+        width="100%"
+      >
+        <Button
+          icon={<Mic size="$10"/>}
+          chromeless
+          circular
+          size="$10" // Keep the visual size
+          padding="$2" // Keep the internal padding
+          onPressIn={() => {transcribedWordsRef.current = []; setTranscribedWords([]); startRecognizing(setErrorMessage, setIsListening)}}
+          onPressOut={() => stopRecognizing(setErrorMessage)}
+          hitSlop={100}
+          pressStyle={{ 
+            backgroundColor: 'transparent',
+            borderColor: 'transparent',
+            scale: 1.3
+          }}
+        />
+        {!isListening && <Text textAlign="center">Press and hold to speak</Text>}
+        {isListening && <Text textAlign="center">Listening...</Text>}
+      </YStack>
+      <YStack position='absolute' bottom='20%'>
+        {transcribedWords && <Text>{transcribedWords.join(' ')}</Text>}
+        {AImessage && <Text>{AImessage}</Text>}
+        {errorMessage && <Text color="$red10">Error: {errorMessage}</Text>}
+      </YStack>
     </YStack>
   );
 };
