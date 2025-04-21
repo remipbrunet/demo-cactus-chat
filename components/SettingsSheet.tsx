@@ -8,7 +8,6 @@ import { useModelContext } from '@/contexts/modelContext'
 import { ApiKeyDialog } from './ApiKeyDialog'
 import { Provider } from '@/services/models'
 import { extractModelNameFromUrl } from '@/utils/modelUtils'
-import { VoiceLogger } from '@/components/VoiceLogger'
 
 // Recommended model for first-time users
 const RECOMMENDED_MODELS = [
@@ -378,8 +377,6 @@ export function SettingsSheet({
                 <Slider.Thumb circular index={0} />
               </Slider>
             </YStack>
-
-            <VoiceLogger/>
             
           </YStack>
         </Animated.View>

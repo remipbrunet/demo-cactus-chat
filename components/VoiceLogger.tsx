@@ -1,219 +1,207 @@
-import { useState, useEffect } from 'react';
-import { View, Text, Button, StyleSheet, PermissionsAndroid, Platform } from 'react-native';
-import Voice, { SpeechRecognizedEvent, SpeechResultsEvent } from '@react-native-voice/voice';
+import { YStack, Button, Text } from 'tamagui';
+import { X, Mic, Play } from '@tamagui/lucide-icons'; // Import the X icon
+import { useModelContext } from '../contexts/modelContext';
+import { generateUniqueId, sendChatMessage } from '../services/chat/chat';
+import { Message } from '../components/ChatMessage';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { startRecognizing, stopRecognizing } from '../utils/voiceFunctions';
+import Voice, { SpeechResultsEvent, SpeechRecognizedEvent, SpeechEndEvent } from '@react-native-voice/voice';
+import Tts from 'react-native-tts'
+import { Model } from '@/services/models';
 
+interface FullScreenOverlayProps {
+  visible: boolean;
+  onClose: () => void;
+}
 
-export const VoiceLogger = () => {
-  const [results, setResults] = useState<string[]>([]);
-  const [isListening, setIsListening] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export const FullScreenOverlay = ({
+  visible,
+  onClose,
+}: FullScreenOverlayProps) => {
+
+  const zIndex = 1000;
+  const [isListening, setIsListening] = useState(false); // whether the transcription is running
+  const [isProcessing, setIsProcessing] = useState(false); // whether the LLM is being invoked
+  const [transcribedWords, setTranscribedWords] = useState<string[]>([]); // the transcription results, word by word
+  const [AImessage, setAImessage] = useState<string>(''); // the AI message
+  const [errorMessage, setErrorMessage] = useState<string | null>(null); // the error message
+  const { selectedModel, tokenGenerationLimit } = useModelContext();
+
+  const transcribedWordsRef = useRef<string[]>([]);
+  const selectedModelRef = useRef<Model | null>(selectedModel);
+
+  const appleVoice = 'com.apple.speech.voice.Alex';
+  const appleLanguage = 'en-US';
 
   useEffect(() => {
+    selectedModelRef.current = selectedModel;
+  }, [selectedModel]); // Update ref whenever context value changes
+
+  async function invokeLLM(input: string[]) {
+    const currentModel = selectedModelRef.current; // <<< Use Ref for model
+    // Tts.speak(`Invoking ${currentModel?.value} from ${input[0]} to ${input[input.length - 1]}`, {
+    //   iosVoiceId: appleVoice,
+    //   rate: 0.5,
+    //   androidParams: {
+    //     KEY_PARAM_STREAM: 'STREAM_MUSIC',
+    //     KEY_PARAM_VOLUME: 1.0,
+    //     KEY_PARAM_PAN: 0.0
+    //   }
+    // });
     
-    const onSpeechResults = (e: any) => {
-      console.log('onSpeechResults: ', e);
-      if (e.value) {
-        setResults(e.value); // Update state with results
-        console.log('Transcribed Text:', e.value.join(' ')); // Log the joined results
-      }
-    };
+    console.log('CACTUSDEBUG Transcribed Text:', input.join(' ')); // Log the joined results
+    setIsProcessing(true);
+    if (currentModel) {
+      const messages: Message[] = [
+        {
+          id: generateUniqueId(),
+          isUser: false,
+          text: input.join(' '),
+          model: currentModel,
+        }
+      ];
+      await sendChatMessage(
+        messages,
+        currentModel, 
+        setAImessage,
+        () => setIsProcessing(false),
+        { streaming: true },
+        tokenGenerationLimit
+      );
+    }
+  }
 
-    // Called when speech recognition encounters an error
-    const onSpeechError = (e: any) => {
-      console.error('onSpeechError: ', e);
-      setError(JSON.stringify(e.error)); // Store error state
-      setIsListening(false); // Ensure listening state is reset on error
-    };
+  // const onSpeechResults = async (e: SpeechResultsEvent) => {
+  //   // this is technically the final result 
+  //   console.log('CACTUSDEBUG onSpeechResults: ', e);
+  //   // if (e.value) {
+  //   //   await invokeLLM(e.value);
+  //   // }
+  // };
 
-    // Called when speech recognition starts successfully
-    const onSpeechStart = (e: any) => {
-      console.log('onSpeechStart: ', e);
-      setError(null); // Clear any previous errors
-      setIsListening(true); // Set listening state
-    };
+  // Called when speech recognition encounters an error
+  const onSpeechError = useCallback((e: any) => {
+    console.error('CACTUSDEBUG onSpeechError: ', e);
+    setErrorMessage(JSON.stringify(e.error)); // Store error state
+    setIsListening(false); // Ensure listening state is reset on error
+    transcribedWordsRef.current = [];
+  }, [setErrorMessage, setIsListening]);
 
-    // Called when speech recognition ends
-    const onSpeechEnd = (e: any) => {
-      console.log('onSpeechEnd: ', e);
-      setIsListening(false); // Reset listening state
-    };
+  // Called when speech recognition starts successfully
+  const onSpeechStart = useCallback((e: any) => {
+    console.log('CACTUSDEBUG onSpeechStart: ', e);
+    setErrorMessage(null); // Clear any previous errors
+    setIsListening(true); // Set listening state
+  }, [setErrorMessage, setIsListening]);
 
-    const onSpeechPartialResults = (e: SpeechResultsEvent) => {
-      console.log('onSpeechPartialResults: ', e);
-    };
+  // Called when speech recognition ends  TODO: experiment a bit to see if we can speed up inference start time by using this event
+  const onSpeechEnd = useCallback(async (e: SpeechEndEvent) => {
+    console.log('CACTUSDEBUG onSpeechEnd: ', e);
+    setIsListening(false); // Reset listening state
+    if (transcribedWordsRef.current.length > 0) {
+      await invokeLLM(transcribedWordsRef.current);
+    }
+  }, [setErrorMessage, setIsListening]);
 
-    const onSpeechRecognized = (e: SpeechRecognizedEvent) => {
-      console.log('onSpeechRecognized: ', e);
-    };
+  const onSpeechPartialResults = useCallback((e: SpeechResultsEvent) => {
+    if (e?.value) {
+      transcribedWordsRef.current = e.value;
+      setTranscribedWords(e.value);
+    }
+    console.log('CACTUSDEBUG onSpeechPartialResults: ', e);
+  }, []);
 
+  // const onSpeechRecognized = (e: SpeechRecognizedEvent) => {
+  //   console.log('CACTUSDEBUG onSpeechRecognized: ', e);
+  // };
+  
+  useEffect(() => {
     // Add listeners
     Voice.onSpeechStart = onSpeechStart;
     Voice.onSpeechEnd = onSpeechEnd;
     Voice.onSpeechError = onSpeechError;
-    Voice.onSpeechResults = onSpeechResults;
+    // Voice.onSpeechResults = onSpeechResults;
     Voice.onSpeechPartialResults = onSpeechPartialResults;
-    Voice.onSpeechRecognized = onSpeechRecognized;
+    // Voice.onSpeechRecognized = onSpeechRecognized;
 
     return () => {
       Voice.destroy().then(Voice.removeAllListeners).catch(e => console.error("Error destroying voice instance:", e));
     };
-  }, []); // Empty dependency array ensures this runs only once on mount and cleanup on unmount
+  }, [onSpeechStart, onSpeechEnd, onSpeechError, onSpeechPartialResults]);
 
-  const requestMicrophonePermission = async (): Promise<boolean> => {
-     if (Platform.OS === 'android') {
-        try {
-            const granted = await PermissionsAndroid.request(
-                PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-                {
-                    title: 'Microphone Permission',
-                    message: 'This app needs access to your microphone to recognize speech.',
-                    buttonNeutral: 'Ask Me Later',
-                    buttonNegative: 'Cancel',
-                    buttonPositive: 'OK',
-                },
-            );
-            if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-                console.log('Microphone permission granted');
-                return true;
-            } else {
-                console.log('Microphone permission denied');
-                setError('Microphone permission denied');
-                return false;
-            }
-        } catch (err) {
-            console.warn(err);
-            setError('Error requesting microphone permission');
-            return false;
+  useEffect(() => {
+    if (!isProcessing && AImessage) {
+      Tts.speak(AImessage, {
+        iosVoiceId: appleVoice,
+        rate: 0.55,
+        androidParams: {
+        KEY_PARAM_STREAM: 'STREAM_MUSIC',
+        KEY_PARAM_VOLUME: 1.0,
+          KEY_PARAM_PAN: 0.0
         }
+      });
     }
-    // For iOS, permission is typically requested implicitly when starting audio services.
-    // Might need to add NSMicrophoneUsageDescription to your Info.plist.
-    return true;
-  };
+  }, [isProcessing]);
 
-  const startRecognizing = async () => {
-    const hasPermission = await requestMicrophonePermission();
-    if (!hasPermission) {
-        return; // Don't start if permission is not granted
-    }
-
-    setResults([]);
-    setError(null);
-    setIsListening(false); // Reset just in case
-
-    try {
-      await Voice.start('en-US');
-      console.log('Started recognizing...');
-    } catch (e) {
-      console.error('Error starting recognition:', e);
-      setError(JSON.stringify(e));
-    }
-  };
-
-  const stopRecognizing = async () => {
-    try {
-      await Voice.stop();
-      console.log('Stopped recognizing.');
-    } catch (e) {
-      console.error('Error stopping recognition:', e);
-      setError(JSON.stringify(e));
-    }
-  };
-
-  const cancelRecognizing = async () => {
-    try {
-      await Voice.cancel();
-      console.log('Cancelled recognition.');
-      setIsListening(false); // Manually reset state as onSpeechEnd might not fire
-    } catch (e) {
-      console.error('Error cancelling recognition:', e);
-      setError(JSON.stringify(e));
-    }
-  };
-
-  /**
-   * Destroys the voice recognizer instance.
-   * Generally called during cleanup, but can be called manually.
-   */
-  const destroyRecognizer = async () => {
-    try {
-      await Voice.destroy();
-      console.log('Destroyed recognizer.');
-      setResults([]);
-      setError(null);
-      setIsListening(false);
-    } catch (e) {
-      console.error('Error destroying recognizer:', e);
-      setError(JSON.stringify(e));
-    }
-  };
+  if(!visible) {
+    return null;
+  }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.statusText}>
-        {isListening ? 'Listening...' : 'Press Start Listening'}
-      </Text>
-      <View style={styles.buttonContainer}>
-        <Button
-          title={isListening ? "Stop Listening" : "Start Listening"}
-          onPress={isListening ? stopRecognizing : startRecognizing}
-          disabled={!isListening && results.length > 0 && Platform.OS === 'ios'} // iOS might need explicit stop sometimes
-        />
-        {/* Optional: Add Cancel and Destroy buttons for testing */}
-        {/* <Button title="Cancel" onPress={cancelRecognizing} disabled={!isListening} /> */}
-        {/* <Button title="Destroy" onPress={destroyRecognizer} /> */}
-      </View>
-      <Text style={styles.header}>Results:</Text>
-      {results.map((result, index) => (
-        <Text key={`result-${index}`} style={styles.resultText}>{result}</Text>
-      ))}
-      {error && <Text style={styles.errorText}>Error: {error}</Text>}
-    </View>
+    <YStack
+      fullscreen 
+      key="fullscreen-overlay"
+      backgroundColor='$background'
+      alignItems="center" 
+      justifyContent="center" 
+      zIndex={zIndex} 
+      gap="$5"
+    >
+      <Button
+        position="absolute"
+        top="$10"
+        right="$4"
+        icon={<X size="$1.5" />} 
+        onPress={onClose}
+        chromeless 
+        circular 
+        size="$3" 
+        aria-label="Close overlay" 
+        zIndex={zIndex + 1} 
+      />
+
+      <Button
+        icon={<Mic size="$10"/>}
+        chromeless
+        circular
+        size="$10" // Keep the visual size
+        padding="$2" // Keep the internal padding
+        onPressIn={() => {transcribedWordsRef.current = []; setTranscribedWords([]); startRecognizing(setErrorMessage, setIsListening)}}
+        onPressOut={() => stopRecognizing(setErrorMessage)}
+        // onPress={() => {
+        //   invokeLLM(["what", "is", "the", "capital", "of", "the", "UK?"])
+        // }}
+        hitSlop={100}
+        pressStyle={{ 
+          backgroundColor: 'transparent',
+          borderColor: 'transparent',
+          opacity: 1
+        }}
+      />
+      {/* <Button
+        icon={<Play size="$10"/>}
+        chromeless
+        circular
+        size="$10" // Keep the visual size
+        padding="$2" // Keep the internal padding
+        onPress={async () => {
+          await invokeLLM(["what is the capital of the UK?"])
+        }}
+      /> */}
+      {!isListening && <Text>Press and hold to speak</Text>}
+      {transcribedWords && <Text>{transcribedWords.join(' ')}</Text>}
+      {AImessage && <Text>{AImessage}</Text>}
+      {errorMessage && <Text color="$red10">Error: {errorMessage}</Text>}
+    </YStack>
   );
 };
-
-// Basic styling
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#f5f5f5', // Light background
-  },
-  buttonContainer: {
-    flexDirection: 'row', // Arrange buttons horizontally
-    justifyContent: 'space-around', // Space out buttons
-    width: '80%', // Limit width
-    marginVertical: 20, // Add vertical spacing
-  },
-  statusText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#333', // Darker text
-  },
-  header: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 20,
-    marginBottom: 5,
-    alignSelf: 'flex-start', // Align header left
-    marginLeft: '10%', // Indent slightly
-    color: '#555',
-  },
-  resultText: {
-    fontSize: 14,
-    marginBottom: 5,
-    alignSelf: 'flex-start',
-    marginLeft: '10%',
-    color: '#000', // Black text for results
-  },
-  errorText: {
-    fontSize: 14,
-    color: 'red', // Red for errors
-    marginTop: 10,
-    alignSelf: 'flex-start',
-    marginLeft: '10%',
-  },
-});

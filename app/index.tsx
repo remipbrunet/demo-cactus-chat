@@ -20,19 +20,21 @@ import { useModelContext } from '@/contexts/modelContext';
 import { logChatCompletionDiagnostics } from '@/services/diagnostics';
 import { MessageInput } from '@/components/MessageInput';
 import { Model } from '@/services/models';
+import { FullScreenOverlay } from '@/components/VoiceLogger';
 
 export default function ChatScreen() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [ currentAIMessage, setCurrentAIMessage ] = useState<string>('');
+  const [currentAIMessage, setCurrentAIMessage] = useState<string>('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [modelIsLoading, setModelIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string>(generateUniqueId());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [allConversations, setAllConversations] = useState<Conversation[]>([]);
+  const [voiceMode, setVoiceMode] = useState(false);
+  
   const scrollViewRef = useRef<any>(null);
-
   const { selectedModel, tokenGenerationLimit } = useModelContext();
   
   // Single ref for streaming updates
@@ -258,6 +260,7 @@ export default function ChatScreen() {
             isStreaming={isStreaming}
             modelIsLoading={modelIsLoading}
             selectedModel={selectedModel}
+            setVoiceMode={setVoiceMode}
           />
         </YStack>
       </KeyboardAvoidingView>
@@ -265,6 +268,10 @@ export default function ChatScreen() {
       <SettingsSheet
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
+      />
+      <FullScreenOverlay
+        visible={voiceMode}
+        onClose={() => setVoiceMode(false)}
       />
     </SafeAreaView>
   );

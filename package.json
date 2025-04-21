@@ -59,6 +59,7 @@
     "react-native-screens": "~4.4.0",
     "react-native-sse": "^1.2.1",
     "react-native-svg": "^15.11.2",
+    "react-native-tts": "^4.1.1",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
     "tamagui": "^1.125.33"
