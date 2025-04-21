@@ -8,30 +8,33 @@ import { startRecognizing, stopRecognizing } from '../utils/voiceFunctions';
 import Voice, { SpeechResultsEvent, SpeechRecognizedEvent, SpeechEndEvent } from '@react-native-voice/voice';
 import Tts from 'react-native-tts'
 import { Model } from '@/services/models';
+import { createUserMessage, createAIMessage } from './ChatMessage';
 
-interface FullScreenOverlayProps {
+interface VoiceModeOverlayProps {
   visible: boolean;
   onClose: () => void;
+  messages: Message[];
+  setMessages: (messages: Message[]) => void;
 }
 
-export const FullScreenOverlay = ({
+export const VoiceModeOverlay = ({
   visible,
   onClose,
-}: FullScreenOverlayProps) => {
+  messages,
+  setMessages,
+}: VoiceModeOverlayProps) => {
 
   const zIndex = 1000;
   const [isListening, setIsListening] = useState(false); // whether the transcription is running
   const [isProcessing, setIsProcessing] = useState(false); // whether the LLM is being invoked
   const [transcribedWords, setTranscribedWords] = useState<string[]>([]); // the transcription results, word by word
-  const [AImessage, setAImessage] = useState<string>(''); // the AI message
+  const [aiMessageText, setAiMessageText] = useState<string>(''); // the AI message
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // the error message
   const { selectedModel, tokenGenerationLimit } = useModelContext();
-
   const transcribedWordsRef = useRef<string[]>([]);
   const selectedModelRef = useRef<Model | null>(selectedModel);
 
   const appleVoice = 'com.apple.speech.voice.Alex';
-  const appleLanguage = 'en-US';
 
   const voiceDebug = useCallback(() => {
     Tts.speak(`Invoking ${selectedModel?.value} from ${transcribedWordsRef.current[0]} to ${transcribedWordsRef.current[transcribedWordsRef.current.length - 1]}`, {
@@ -55,19 +58,16 @@ export const FullScreenOverlay = ({
     console.log('CACTUSDEBUG Transcribed Text:', input.join(' ')); // Log the joined results
     setIsProcessing(true);
     if (currentModel) {
-      const messages: Message[] = [
-        {
-          id: generateUniqueId(),
-          isUser: false,
-          text: input.join(' '),
-          model: currentModel,
-        }
-      ];
+      const updatedMessages: Message[] = [...messages, createUserMessage(input.join(' '), currentModel)];
+      setMessages(updatedMessages);
       await sendChatMessage(
-        messages,
-        currentModel, 
-        setAImessage,
-        () => setIsProcessing(false),
+        updatedMessages,
+        currentModel,
+        setAiMessageText,
+        (metrics, model) => {
+          setIsProcessing(false);
+          setMessages([...messages, createAIMessage(aiMessageText, model, metrics)]);
+        },
         { streaming: true },
         tokenGenerationLimit
       );
@@ -133,8 +133,8 @@ export const FullScreenOverlay = ({
   }, [onSpeechStart, onSpeechEnd, onSpeechError, onSpeechPartialResults]);
 
   useEffect(() => {
-    if (!isProcessing && AImessage) {
-      Tts.speak(AImessage, {
+    if (!isProcessing && aiMessageText) {
+      Tts.speak(aiMessageText, {
         iosVoiceId: appleVoice,
         rate: 0.55,
         androidParams: {
@@ -202,7 +202,7 @@ export const FullScreenOverlay = ({
       </YStack>
       <YStack position='absolute' bottom='20%'>
         {transcribedWords && <Text>{transcribedWords.join(' ')}</Text>}
-        {AImessage && <Text>{AImessage}</Text>}
+        {aiMessageText && <Text>{aiMessageText}</Text>}
         {errorMessage && <Text color="$red10">Error: {errorMessage}</Text>}
       </YStack>
     </YStack>

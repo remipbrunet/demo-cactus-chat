@@ -2,6 +2,7 @@ import { XStack, YStack, Text } from 'tamagui';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import { Model } from '@/services/models';
 import Markdown from 'react-native-markdown-display';
+import { generateUniqueId } from '@/services/chat/chat';
 
 export interface Message {
   id: string;
@@ -14,6 +15,14 @@ export interface Message {
 interface ChatMessageProps {
   message: Message;
 }
+
+export const createUserMessage = (messageText: string, model: Model): Message => {
+  return { id: generateUniqueId(), isUser: true, text: messageText, model: model };
+}
+
+export const createAIMessage = (messageText: string, model: Model, metrics?: ModelMetrics): Message => {
+  return { id: generateUniqueId(), isUser: false, text: messageText, model: model, metrics: metrics };
+} 
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const { isUser, text, metrics, model } = message;

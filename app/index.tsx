@@ -1,9 +1,9 @@
-import { XStack, YStack, Input, Button, ScrollView, Spinner, Text } from 'tamagui';
+import { XStack, YStack, Button, ScrollView } from 'tamagui';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Menu, Settings, Send } from '@tamagui/lucide-icons';
-import { ChatMessage } from '../components/ChatMessage';
+import { ChatMessage, createUserMessage } from '../components/ChatMessage';
 import { ModelPicker } from '../components/ModelPicker';
 import { ConversationSidebar } from '../components/ConversationSidebar';
 import { SettingsSheet } from '../components/SettingsSheet';
@@ -20,7 +20,7 @@ import { useModelContext } from '@/contexts/modelContext';
 import { logChatCompletionDiagnostics } from '@/services/diagnostics';
 import { MessageInput } from '@/components/MessageInput';
 import { Model } from '@/services/models';
-import { FullScreenOverlay } from '@/components/VoiceModeScreen';
+import { VoiceModeOverlay } from '@/components/VoiceModeScreen';
 
 export default function ChatScreen() {
   const [open, setOpen] = useState(false);
@@ -162,12 +162,7 @@ export default function ChatScreen() {
     if (!inputText.trim() || isStreaming) return;
     if (!selectedModel) return;
 
-    const userMessage: Message = {
-      id: generateUniqueId(),
-      isUser: true,
-      text: inputText,
-      model: selectedModel
-    };
+    const userMessage: Message = createUserMessage(inputText, selectedModel);
 
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
@@ -269,9 +264,11 @@ export default function ChatScreen() {
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
       />
-      <FullScreenOverlay
+      <VoiceModeOverlay
         visible={voiceMode}
         onClose={() => setVoiceMode(false)}
+        messages={messages}
+        setMessages={setMessages}
       />
     </SafeAreaView>
   );
