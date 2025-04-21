@@ -11,7 +11,7 @@ export interface ChatProgressCallback {
 }
 
 export interface ChatCompleteCallback {
-  (metrics: ModelMetrics, model: Model): void;
+  (metrics: ModelMetrics, model: Model, completeMessage: string): void;
 }
 
 export interface ChatOptions {

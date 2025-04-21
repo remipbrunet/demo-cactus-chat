@@ -81,7 +81,7 @@ export async function streamGeminiCompletion(
                     modelMetrics.completionTokens = data.usageMetadata.candidatesTokenCount
                     modelMetrics.tokensPerSecond = modelMetrics.completionTokens / (totalTime / 1000);
 
-                    onComplete(modelMetrics, model);
+                    onComplete(modelMetrics, model, responseText);
                     es.close();
                 }
             }

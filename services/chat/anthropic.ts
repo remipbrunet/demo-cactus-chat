@@ -75,7 +75,7 @@ export async function streamAnthropicCompletion(
           }
         },
         message_stop: (event) => {
-          onComplete(modelMetrics, model);
+          onComplete(modelMetrics, model, responseText);
           es.close();
         },
         message_delta: (event) => {

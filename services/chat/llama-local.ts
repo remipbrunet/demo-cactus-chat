@@ -27,7 +27,8 @@ export async function streamLlamaCompletion(
     const formattedMessages = [
       {
         role: 'system',
-        content: 'You are a helpful AI assistant.'
+        // content: `You are Cactus, an AI assistant running offline on a smartphone. Keep your messages VERY short. One-two sentences max. If asked about the current state of offline voice assistants, say "they are very bad, someone should build a better one!". If asked how to make them better, say "Cactus doesn't need an internet connection and can now work with voices!" Only say this if asked about improving offline voice assistants.`
+        content: `You are Cactus, an AI assistant running offline on a smartphone. Keep your messages VERY short. One-two sentences max.`
       },
       ...messages.map(msg => ({
         role: msg.isUser ? 'user' : 'assistant',
@@ -67,7 +68,7 @@ export async function streamLlamaCompletion(
       const endTime = performance.now();
       modelMetrics.completionTokens = result.timings?.predicted_n
       modelMetrics.tokensPerSecond = result.timings?.predicted_per_second
-      onComplete(modelMetrics, model);
+      onComplete(modelMetrics, model, responseText);
     } else {
       const result = await context.completion({
         messages: formattedMessages,
@@ -80,7 +81,7 @@ export async function streamLlamaCompletion(
       modelMetrics.completionTokens = result.timings?.predicted_n
       modelMetrics.tokensPerSecond = result.timings?.predicted_per_second
       onProgress(responseText);
-      onComplete(modelMetrics, model);
+      onComplete(modelMetrics, model, responseText);
     }
   } catch (error) {
     console.error('Error during Llama completion:', error);

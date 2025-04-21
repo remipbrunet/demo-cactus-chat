@@ -4,11 +4,17 @@ import { useModelContext } from '../contexts/modelContext';
 import { generateUniqueId, sendChatMessage } from '../services/chat/chat';
 import { Message } from './ChatMessage';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { startRecognizing, stopRecognizing } from '../utils/voiceFunctions';
+import { startRecognizing, stopRecognizing, removeEmojis } from '../utils/voiceFunctions';
 import Voice, { SpeechResultsEvent, SpeechRecognizedEvent, SpeechEndEvent } from '@react-native-voice/voice';
 import Tts from 'react-native-tts'
 import { Model } from '@/services/models';
 import { createUserMessage, createAIMessage } from './ChatMessage';
+
+// const messagesToSend = [
+//   "Why are all the voice assistants still so unreliable in 2025 and don't work offline??",
+//   "What can we do to make them better?",
+//   "great thanks Cactus, bye!"
+// ]
 
 interface VoiceModeOverlayProps {
   visible: boolean;
@@ -36,8 +42,9 @@ export const VoiceModeOverlay = ({
 
   const appleVoice = 'com.apple.speech.voice.Alex';
 
-  const voiceDebug = useCallback(() => {
-    Tts.speak(`Invoking ${selectedModel?.value} from ${transcribedWordsRef.current[0]} to ${transcribedWordsRef.current[transcribedWordsRef.current.length - 1]}`, {
+  const voiceDebug = useCallback((voiceMessage: string) => {
+    Tts.speak(voiceMessage, {
+    // Tts.speak(`Invoking ${selectedModel?.value} from ${transcribedWordsRef.current[0]} to ${transcribedWordsRef.current[transcribedWordsRef.current.length - 1]}`, {
       iosVoiceId: appleVoice,
       rate: 0.5,
       androidParams: {
@@ -52,27 +59,27 @@ export const VoiceModeOverlay = ({
     selectedModelRef.current = selectedModel;
   }, [selectedModel]); // Update ref whenever context value changes
 
-  async function invokeLLM(input: string[]) {
+  const invokeLLM = useCallback(async (input: string) => {
     const currentModel = selectedModelRef.current; // <<< Use Ref for model
     
-    console.log('CACTUSDEBUG Transcribed Text:', input.join(' ')); // Log the joined results
+    console.log('CACTUSDEBUG Transcribed Text:', input); // Log the joined results
     setIsProcessing(true);
     if (currentModel) {
-      const updatedMessages: Message[] = [...messages, createUserMessage(input.join(' '), currentModel)];
+      const updatedMessages: Message[] = [...messages, createUserMessage(input, currentModel)];
       setMessages(updatedMessages);
       await sendChatMessage(
         updatedMessages,
         currentModel,
         setAiMessageText,
-        (metrics, model) => {
+        (metrics, model, completeMessage) => {
           setIsProcessing(false);
-          setMessages([...messages, createAIMessage(aiMessageText, model, metrics)]);
+          setMessages([...updatedMessages, createAIMessage(completeMessage, model, metrics)]);
         },
         { streaming: true },
         tokenGenerationLimit
       );
     }
-  }
+  }, [messages, selectedModelRef, tokenGenerationLimit])//, setMessages, setAiMessageText, setIsProcessing]);
 
   // const onSpeechResults = async (e: SpeechResultsEvent) => {
   //   // this is technically the final result 
@@ -93,18 +100,19 @@ export const VoiceModeOverlay = ({
   // Called when speech recognition starts successfully
   const onSpeechStart = useCallback((e: any) => {
     console.log('CACTUSDEBUG onSpeechStart: ', e);
+    try {Tts.stop()} catch (error) {console.error('Failed to stop TTS: ', error);}
     setErrorMessage(null); // Clear any previous errors
     setIsListening(true); // Set listening state
-  }, [setErrorMessage, setIsListening]);
+  }, [setErrorMessage, setIsListening, Tts]);
 
   // Called when speech recognition ends  TODO: experiment a bit to see if we can speed up inference start time by using this event
   const onSpeechEnd = useCallback(async (e: SpeechEndEvent) => {
     console.log('CACTUSDEBUG onSpeechEnd: ', e);
     setIsListening(false); // Reset listening state
     if (transcribedWordsRef.current.length > 0) {
-      await invokeLLM(transcribedWordsRef.current);
+      await invokeLLM(transcribedWordsRef.current.join(' '));
     }
-  }, [setErrorMessage, setIsListening]);
+  }, [setErrorMessage, setIsListening, transcribedWordsRef, invokeLLM]);
 
   const onSpeechPartialResults = useCallback((e: SpeechResultsEvent) => {
     if (e?.value) {
@@ -134,9 +142,9 @@ export const VoiceModeOverlay = ({
 
   useEffect(() => {
     if (!isProcessing && aiMessageText) {
-      Tts.speak(aiMessageText, {
+      Tts.speak(removeEmojis(aiMessageText), {
         iosVoiceId: appleVoice,
-        rate: 0.55,
+        rate: 0.5,
         androidParams: {
         KEY_PARAM_STREAM: 'STREAM_MUSIC',
         KEY_PARAM_VOLUME: 1.0,
@@ -165,7 +173,10 @@ export const VoiceModeOverlay = ({
         top="$10"
         right="$4"
         icon={<X size="$1.5" />} 
-        onPress={onClose}
+        onPress={() => {
+          try {Tts.stop()} catch (error) {console.error('Failed to stop TTS: ', error);}
+          onClose()
+        }}
         chromeless 
         circular 
         size="$3" 
@@ -190,6 +201,7 @@ export const VoiceModeOverlay = ({
           padding="$2" // Keep the internal padding
           onPressIn={() => {transcribedWordsRef.current = []; setTranscribedWords([]); startRecognizing(setErrorMessage, setIsListening)}}
           onPressOut={() => stopRecognizing(setErrorMessage)}
+          // onPress={() => {Tts.stop(); invokeLLM(messagesToSend.shift() || '')}}
           hitSlop={100}
           pressStyle={{ 
             backgroundColor: 'transparent',
@@ -200,10 +212,11 @@ export const VoiceModeOverlay = ({
         {!isListening && <Text textAlign="center">Press and hold to speak</Text>}
         {isListening && <Text textAlign="center">Listening...</Text>}
       </YStack>
-      <YStack position='absolute' bottom='20%'>
-        {transcribedWords && <Text>{transcribedWords.join(' ')}</Text>}
-        {aiMessageText && <Text>{aiMessageText}</Text>}
+      <YStack position='absolute' bottom='20%' width='80%'>
+        {/* {transcribedWords && <Text>{transcribedWords.join(' ')}</Text>} */}
+        {aiMessageText && <Text textAlign="center">{aiMessageText}</Text>}
         {errorMessage && <Text color="$red10">Error: {errorMessage}</Text>}
+        {/* <Button onPress={() => voiceDebug('Hello, Im happy to be helping you out today!')}>Debug</Button> */}
       </YStack>
     </YStack>
   );

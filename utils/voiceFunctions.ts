@@ -1,6 +1,23 @@
 import { PermissionsAndroid, Platform } from 'react-native';
 import Voice, { SpeechRecognizedEvent, SpeechResultsEvent } from '@react-native-voice/voice';
 
+/**
+ * Removes emojis from a string.
+ * @param text - The string to remove emojis from.
+ * @returns The string with emojis removed.
+ */
+export function removeEmojis(text: string): string {
+  // Regular expression to match most emojis and emoji sequences:
+  // \p{Emoji_Presentation}: Matches characters explicitly intended as emoji.
+  // \p{Extended_Pictographic}: Matches a broader category including many symbols that might be rendered as emoji.
+  // The 'u' flag enables Unicode property escapes (\p{}).
+  // The 'g' flag ensures all occurrences globally in the string are replaced.
+  const emojiRegex = /[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu;
+
+  // Replace matches with an empty string
+  return text.replace(emojiRegex, '');
+}
+
 export const requestMicrophonePermission = async (setError: (error: string) => void): Promise<boolean> => {
     if (Platform.OS === 'android') {
        try {

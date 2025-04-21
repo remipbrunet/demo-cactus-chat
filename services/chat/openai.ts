@@ -90,7 +90,7 @@ export async function streamOpenAICompletion(
           } else {
             console.log('Done. SSE connection closed.')
             es.close()
-            onComplete(modelMetrics, model)
+            onComplete(modelMetrics, model, responseText)
           }
         } else if (event.type === 'error') {
           console.error('Connection error:', event.message)
