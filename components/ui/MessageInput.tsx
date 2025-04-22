@@ -26,11 +26,11 @@ const MessageInputButton = memo(({
     setVoiceMode
 }: MessageInputButtonProps) => {
     // Conditional rendering based on props
-    if (isStreaming) {
-        return <Button icon={<Pause size="$1.5"/>} onPress={onPausePress} aria-label="Pause Streaming" chromeless/>;
-    }
+    // if (isStreaming) {
+    //     return <Button icon={<Pause size="$1.5"/>} onPress={onPausePress} aria-label="Pause Streaming" chromeless/>;
+    // }
 
-    if (modelIsLoading) {
+    if (isStreaming ||modelIsLoading) {
         // Wrap Spinner in YStack for consistent layout within the parent's YStack
         return <Spinner size="small" />
     }
