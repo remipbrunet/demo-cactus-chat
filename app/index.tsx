@@ -18,7 +18,7 @@ import { ModelMetrics } from '@/utils/modelMetrics';
 import { Message } from '@/components/ui/ChatMessage';
 import { useModelContext } from '@/contexts/modelContext';
 import { logChatCompletionDiagnostics } from '@/services/diagnostics';
-import { MessageInput } from '@/components/MessageInput';
+import { MessageInput } from '@/components/ui/MessageInput';
 import { Model } from '@/services/models';
 import { VoiceModeOverlay } from '@/components/VoiceModeScreen';
 

@@ -30,7 +30,6 @@ export async function sendChatMessage(
   options: ChatOptions = { streaming: true, voiceMode: false },
   maxTokens: number
 ): Promise<void> {
-  console.log('Sending chat message with model:', model.value, messages);
   try {
     switch (model.provider) {
       case 'OpenAI':

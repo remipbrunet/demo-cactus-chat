@@ -25,9 +25,6 @@ const MessageInputButton = memo(({
     onPausePress,
     setVoiceMode
 }: MessageInputButtonProps) => {
-    // Log only when props actually change causing a re-render
-    console.log('Rendering MessageInputButton', isStreaming, modelIsLoading, isSendDisabled, isVoiceDisabled, onSendPress, onPausePress);
-
     // Conditional rendering based on props
     if (isStreaming) {
         return <Button icon={<Pause size="$1.5"/>} onPress={onPausePress} aria-label="Pause Streaming" chromeless/>;
@@ -91,6 +88,7 @@ function MessageInputComponent({ sendMessage, isStreaming, modelIsLoading, selec
             borderWidth={1}
             borderColor="$gray5"
             borderRadius='$6'
+            marginBottom='$2'
             padding="$2"
             backgroundColor="#FFF"
         >

@@ -84,12 +84,7 @@ export function ModelPicker({
         zIndex
       }}
       zIndex={zIndex}
-      ArrowDownIconComponent={({ style }) => {
-        if (modelIsLoading) {
-          return <Spinner />
-        }
-        return <ChevronDown size={16} color="#000" />
-      }}
+      ArrowDownIconComponent={({ style }) => <ChevronDown size={16} color="#000" />}
       ArrowUpIconComponent={({ style }) => <ChevronUp size={16} color="#000" />}
       listItemContainerStyle={{ height: 32 }}
       disabledItemContainerStyle={{ opacity: 0.5 }}
