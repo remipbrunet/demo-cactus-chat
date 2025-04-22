@@ -1,20 +1,14 @@
 import { YStack, Button, Text } from 'tamagui';
-import { X, Mic, Play } from '@tamagui/lucide-icons'; // Import the X icon
+import { X, Mic } from '@tamagui/lucide-icons'; // Import the X icon
 import { useModelContext } from '../contexts/modelContext';
-import { generateUniqueId, sendChatMessage } from '../services/chat/chat';
-import { Message } from './ChatMessage';
+import { sendChatMessage } from '../services/chat/chat';
+import { Message } from './ui/ChatMessage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { startRecognizing, stopRecognizing, removeEmojis } from '../utils/voiceFunctions';
-import Voice, { SpeechResultsEvent, SpeechRecognizedEvent, SpeechEndEvent } from '@react-native-voice/voice';
+import Voice, { SpeechResultsEvent, SpeechEndEvent } from '@react-native-voice/voice';
 import Tts from 'react-native-tts'
 import { Model } from '@/services/models';
-import { createUserMessage, createAIMessage } from './ChatMessage';
-
-// const messagesToSend = [
-//   "Why are all the voice assistants still so unreliable in 2025 and don't work offline??",
-//   "What can we do to make them better?",
-//   "great thanks Cactus, bye!"
-// ]
+import { createUserMessage, createAIMessage } from './ui/ChatMessage';
 
 interface VoiceModeOverlayProps {
   visible: boolean;
@@ -33,7 +27,6 @@ export const VoiceModeOverlay = ({
   const zIndex = 1000;
   const [isListening, setIsListening] = useState(false); // whether the transcription is running
   const [isProcessing, setIsProcessing] = useState(false); // whether the LLM is being invoked
-  const [transcribedWords, setTranscribedWords] = useState<string[]>([]); // the transcription results, word by word
   const [aiMessageText, setAiMessageText] = useState<string>(''); // the AI message
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // the error message
   const { selectedModel, tokenGenerationLimit } = useModelContext();
@@ -75,7 +68,7 @@ export const VoiceModeOverlay = ({
           setIsProcessing(false);
           setMessages([...updatedMessages, createAIMessage(completeMessage, model, metrics)]);
         },
-        { streaming: true },
+        { streaming: true, voiceMode: true },
         tokenGenerationLimit
       );
     }
@@ -117,7 +110,6 @@ export const VoiceModeOverlay = ({
   const onSpeechPartialResults = useCallback((e: SpeechResultsEvent) => {
     if (e?.value) {
       transcribedWordsRef.current = e.value;
-      setTranscribedWords(e.value);
     }
     console.log('CACTUSDEBUG onSpeechPartialResults: ', e);
   }, []);
@@ -170,7 +162,7 @@ export const VoiceModeOverlay = ({
     >
       <Button
         position="absolute"
-        top="$10"
+        top="7%"
         right="$4"
         icon={<X size="$1.5" />} 
         onPress={() => {
@@ -183,6 +175,9 @@ export const VoiceModeOverlay = ({
         aria-label="Close overlay" 
         zIndex={zIndex + 1} 
       />
+      <YStack position='absolute' top='8.25%' width='50%'>
+          <Text textAlign="center" fontSize={12} color="$gray10">Voice mode: beta</Text>
+      </YStack>
 
       <YStack 
         position='absolute' 
@@ -199,9 +194,8 @@ export const VoiceModeOverlay = ({
           circular
           size="$10" // Keep the visual size
           padding="$2" // Keep the internal padding
-          onPressIn={() => {transcribedWordsRef.current = []; setTranscribedWords([]); startRecognizing(setErrorMessage, setIsListening)}}
+          onPressIn={() => {transcribedWordsRef.current = []; startRecognizing(setErrorMessage, setIsListening)}}
           onPressOut={() => stopRecognizing(setErrorMessage)}
-          // onPress={() => {Tts.stop(); invokeLLM(messagesToSend.shift() || '')}}
           hitSlop={100}
           pressStyle={{ 
             backgroundColor: 'transparent',
@@ -209,14 +203,12 @@ export const VoiceModeOverlay = ({
             scale: 1.3
           }}
         />
+
         {!isListening && <Text textAlign="center">Press and hold to speak</Text>}
         {isListening && <Text textAlign="center">Listening...</Text>}
       </YStack>
       <YStack position='absolute' bottom='20%' width='80%'>
-        {/* {transcribedWords && <Text>{transcribedWords.join(' ')}</Text>} */}
-        {aiMessageText && <Text textAlign="center">{aiMessageText}</Text>}
         {errorMessage && <Text color="$red10">Error: {errorMessage}</Text>}
-        {/* <Button onPress={() => voiceDebug('Hello, Im happy to be helping you out today!')}>Debug</Button> */}
       </YStack>
     </YStack>
   );

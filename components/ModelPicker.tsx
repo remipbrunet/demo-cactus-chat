@@ -6,7 +6,7 @@ import { truncateModelName } from '@/utils/modelUtils';
 import { useModelContext } from '@/contexts/modelContext';
 import { saveLastUsedModel } from '@/services/storage';
 import { ensureLocalModelContext } from '@/utils/localModelContext';
-import { Text, XStack } from 'tamagui';
+import { Spinner, Text, XStack } from 'tamagui';
 
 const dropdownStyles = {
   container: {
@@ -31,6 +31,7 @@ const dropdownStyles = {
 
 interface ModelPickerProps {
   open: boolean;
+  modelIsLoading: boolean;
   setModelIsLoading: Dispatch<SetStateAction<boolean>>;
   setOpen: Dispatch<SetStateAction<boolean>>;
   zIndex?: number;
@@ -38,6 +39,7 @@ interface ModelPickerProps {
 
 export function ModelPicker({ 
   open, 
+  modelIsLoading,
   setModelIsLoading,
   setOpen, 
   zIndex = 50,
@@ -82,7 +84,12 @@ export function ModelPicker({
         zIndex
       }}
       zIndex={zIndex}
-      ArrowDownIconComponent={({ style }) => <ChevronDown size={16} color="#000" />}
+      ArrowDownIconComponent={({ style }) => {
+        if (modelIsLoading) {
+          return <Spinner />
+        }
+        return <ChevronDown size={16} color="#000" />
+      }}
       ArrowUpIconComponent={({ style }) => <ChevronUp size={16} color="#000" />}
       listItemContainerStyle={{ height: 32 }}
       disabledItemContainerStyle={{ opacity: 0.5 }}

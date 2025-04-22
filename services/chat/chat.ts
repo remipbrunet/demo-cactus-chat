@@ -2,7 +2,7 @@ import { streamOpenAICompletion } from './openai';
 import { streamAnthropicCompletion } from './anthropic';
 import { streamGeminiCompletion } from './gemini';
 import { streamLlamaCompletion } from './llama-local';
-import { Message } from '@/components/ChatMessage';
+import { Message } from '@/components/ui/ChatMessage';
 import { Model } from '../models';
 import { ModelMetrics } from '@/utils/modelMetrics';
 
@@ -16,6 +16,7 @@ export interface ChatCompleteCallback {
 
 export interface ChatOptions {
   streaming?: boolean;
+  voiceMode?: boolean; // only used by Llama local
 }
 
 /**
@@ -26,7 +27,7 @@ export async function sendChatMessage(
   model: Model,
   onProgress: ChatProgressCallback,
   onComplete: ChatCompleteCallback,
-  options: ChatOptions = { streaming: true },
+  options: ChatOptions = { streaming: true, voiceMode: false },
   maxTokens: number
 ): Promise<void> {
   console.log('Sending chat message with model:', model.value, messages);
@@ -70,6 +71,7 @@ export async function sendChatMessage(
           onComplete, 
           options.streaming,
           maxTokens,
+          options.voiceMode
         );
         
       default:

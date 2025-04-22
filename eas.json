@@ -16,7 +16,7 @@
       "ios": {}
     },
     "production": {
-      "autoIncrement": true,
+      "autoIncrement": true
     }
   },
   "submit": {

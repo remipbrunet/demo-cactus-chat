@@ -39,10 +39,13 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
     setModelsVersion(modelsVersion + 1);
   }
 
-  useEffect(() => { // on initial load, we get the last saved preferences
+  useEffect(() => { // on initial load
     getTokenGenerationLimit().then((limit) => {
       setTokenGenerationLimit(limit);
     });
+    if (!selectedModel && availableModels.length === 1) {
+      setSelectedModel(availableModels[0]);
+    }
   }, []);
 
   useEffect(() => {

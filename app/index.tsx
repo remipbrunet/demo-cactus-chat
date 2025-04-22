@@ -3,7 +3,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Menu, Settings, Send } from '@tamagui/lucide-icons';
-import { ChatMessage, createUserMessage } from '../components/ChatMessage';
+import { ChatMessage, createUserMessage } from '../components/ui/ChatMessage';
 import { ModelPicker } from '../components/ModelPicker';
 import { ConversationSidebar } from '../components/ConversationSidebar';
 import { SettingsSheet } from '../components/SettingsSheet';
@@ -15,7 +15,7 @@ import {
   getConversations,
 } from '../services/storage';
 import { ModelMetrics } from '@/utils/modelMetrics';
-import { Message } from '@/components/ChatMessage';
+import { Message } from '@/components/ui/ChatMessage';
 import { useModelContext } from '@/contexts/modelContext';
 import { logChatCompletionDiagnostics } from '@/services/diagnostics';
 import { MessageInput } from '@/components/MessageInput';
@@ -223,6 +223,7 @@ export default function ChatScreen() {
             />
             <ModelPicker
               open={open}
+              modelIsLoading={modelIsLoading}
               setModelIsLoading={setModelIsLoading}
               setOpen={setOpen}
               zIndex={50}
