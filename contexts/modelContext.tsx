@@ -43,8 +43,9 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
     getTokenGenerationLimit().then((limit) => {
       setTokenGenerationLimit(limit);
     });
-    if (!selectedModel && availableModels.length === 1) {
-      setSelectedModel(availableModels[0]);
+    const enabledModels = availableModels.filter(model => !model.disabled);
+    if (!selectedModel && enabledModels.length === 1) {
+      setSelectedModel(enabledModels[0]);
     }
   }, []);
 
