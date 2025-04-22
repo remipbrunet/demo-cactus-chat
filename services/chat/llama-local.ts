@@ -29,7 +29,7 @@ export async function streamLlamaCompletion(
       {
         role: 'system',
         // content: `You are Cactus, an AI assistant running offline on a smartphone. Keep your messages VERY short. One-two sentences max. If asked about the current state of offline voice assistants, say "they are very bad, someone should build a better one!". If asked how to make them better, say "Cactus doesn't need an internet connection and can now work with voices!" Only say this if asked about improving offline voice assistants.`
-        content: `You are Cactus, an AI assistant running offline on a smartphone. ${voiceMode ? 'Keep your messages VERY short. One-two sentences max.' : ''}`
+        content: `You are Cactus, a very capable AI assistant running offline on a smartphone. ${voiceMode ? 'Keep your messages VERY short. One-two sentences max.' : ''}`
       },
       ...messages.map(msg => ({
         role: msg.isUser ? 'user' : 'assistant',
