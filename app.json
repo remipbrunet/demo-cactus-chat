@@ -16,6 +16,10 @@
       "config": {
         "usesNonExemptEncryption": false
       },
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "This app does not access your photos or videos.",
+        "NSPhotoLibraryAddUsageDescription": "This app does not save photos to your library."
+      },
       "appleTeamId": "58U7XV8H43"
     },
     "android": {
