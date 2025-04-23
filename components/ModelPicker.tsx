@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronRight, ChevronUp } from '@tamagui/lucide-icons';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { Dispatch, SetStateAction, useState } from 'react';
+import { Dispatch, SetStateAction, useEffect, useState } from 'react';
 import { ViewStyle } from 'react-native';
 import { truncateModelName } from '@/utils/modelUtils';
 import { useModelContext } from '@/contexts/modelContext';
@@ -35,6 +35,7 @@ interface ModelPickerProps {
   setModelIsLoading: Dispatch<SetStateAction<boolean>>;
   setOpen: Dispatch<SetStateAction<boolean>>;
   zIndex?: number;
+  setSettingsOpen: Dispatch<SetStateAction<boolean>>;
 }
 
 export function ModelPicker({ 
@@ -43,6 +44,7 @@ export function ModelPicker({
   setModelIsLoading,
   setOpen, 
   zIndex = 50,
+  setSettingsOpen
 }: ModelPickerProps) {
   const { availableModels, selectedModel, setSelectedModel } = useModelContext();
   const [dropdownValue, setDropdownValue] = useState<string | null>(selectedModel?.value || null);
@@ -58,7 +60,6 @@ export function ModelPicker({
       if (newlySelectedModel) {
         const newModelSelected = newlySelectedModel !== selectedModel
         setSelectedModel(newlySelectedModel);
-        saveLastUsedModel(newlySelectedModel.value);
         if (newModelSelected) {
           setModelIsLoading(true);
           await ensureLocalModelContext(newlySelectedModel);
@@ -67,6 +68,23 @@ export function ModelPicker({
       }
     }
   };
+
+  useEffect(() => {
+    setDropdownValue(selectedModel?.value || null);
+    if (selectedModel?.value) {
+      saveLastUsedModel(selectedModel.value);
+    }
+  }, [selectedModel])
+
+  function ModelPickerPlaceholder() {
+    // Placeholder we display when no models are available
+    return (
+      <XStack padding="$3" alignItems="center" justifyContent="center" flex={1} onPress={() => setSettingsOpen(true)}>
+        <Text color="$gray10" fontSize={12}>Add models to get started</Text>
+        <ChevronRight size={14} color="$gray10" />
+      </XStack>
+    )
+  }
 
   if (!availableModels.filter(model => !model.disabled).length) {
     return <ModelPickerPlaceholder />
@@ -98,13 +116,3 @@ export function ModelPicker({
     />
   );
 } 
-
-function ModelPickerPlaceholder() {
-  // Placeholder we display when no models are available
-  return (
-    <XStack padding="$3" alignItems="center" justifyContent="center" flex={1}>
-      <Text color="$gray10" fontSize={12}>Add models to get started</Text>
-      <ChevronRight size={14} color="$gray10" />
-    </XStack>
-  )
-}
