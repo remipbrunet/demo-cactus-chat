@@ -1,17 +1,20 @@
-import { getApiKey } from './storage';
-import { Message } from '@/components/ChatMessage';
+import { getApiKey } from '../storage';
+import { Message } from '@/components/ui/ChatMessage';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import EventSource from 'react-native-sse';
+import { ChatCompleteCallback, ChatProgressCallback } from './chat';
+import { Model } from '../models';
 
 export async function streamGeminiCompletion(
   messages: Message[],
-  model: string,
-  onProgress: (text: string) => void,
-  onComplete: (modelMetrics: ModelMetrics) => void,
-  streaming: boolean = true
+  model: Model,
+  onProgress: ChatProgressCallback,
+  onComplete: ChatCompleteCallback,
+  streaming: boolean = true,
+  maxTokens: number
 ) {
   try {
-    const apiKey = await getApiKey('gemini');
+    const apiKey = await getApiKey('Google');
     if (!apiKey) {
       throw new Error('Gemini API key not found. Please add your API key in settings.');
     }
@@ -34,10 +37,13 @@ export async function streamGeminiCompletion(
     if (streaming) {
       const payload = {
         contents: formattedMessages,
+        generationConfig: {
+            maxOutputTokens: maxTokens
+        }
       }
 
       // We've already checked apiKey is not null above
-      const url = new URL(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}`);
+      const url = new URL(`https://generativelanguage.googleapis.com/v1beta/models/${model.value}:streamGenerateContent?key=${apiKey}`);
       url.searchParams.append('alt', 'sse');
       
       const es = new EventSource(url.toString(), {
@@ -68,14 +74,14 @@ export async function streamGeminiCompletion(
                     //
                 }
 
-                if (data.candidates[0]?.finishReason === 'STOP') {
+                if (data.candidates[0]?.finishReason === 'STOP' || data.candidates[0]?.finishReason === 'MAX_TOKENS') {
                     const endTime = performance.now();
                     const totalTime = endTime - startTime;
 
                     modelMetrics.completionTokens = data.usageMetadata.candidatesTokenCount
                     modelMetrics.tokensPerSecond = modelMetrics.completionTokens / (totalTime / 1000);
 
-                    onComplete(modelMetrics);
+                    onComplete(modelMetrics, model, responseText);
                     es.close();
                 }
             }

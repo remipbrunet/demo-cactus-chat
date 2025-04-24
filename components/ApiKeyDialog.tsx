@@ -4,76 +4,60 @@ import { Modal, View, TouchableWithoutFeedback } from 'react-native'
 import OpenAI from 'openai'
 import { Anthropic } from '@anthropic-ai/sdk'
 import {GoogleGenAI} from '@google/genai';
-
+import { useModelContext } from '@/contexts/modelContext';
+import { saveApiKey } from '@/services/storage';
+import { Provider } from '@/services/models';
 
 interface ApiKeyDialogProps {
   open: boolean
-  provider: 'OpenAI' | 'Anthropic' | 'Google'
+  provider: Provider
   onClose: () => void
-  onSave: (key: string) => void
 }
 
-export function ApiKeyDialog({ open, provider, onClose, onSave }: ApiKeyDialogProps) {
+export function ApiKeyDialog({ open, provider, onClose }: ApiKeyDialogProps) {
+
+  const { refreshModels } = useModelContext();
   const [apiKey, setApiKey] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [isValidating, setIsValidating] = useState(false)
-  
-  const validateOpenAIKey = async (key: string): Promise<boolean> => {
-    try {
-      setIsValidating(true)
-      setErrorMessage('')
-      
-      const openai = new OpenAI({
-        apiKey: key,
-        dangerouslyAllowBrowser: true,
-      })
-      
-      // Make a simple models list request to validate the key
-      await openai.models.list()
-      return true
-    } catch (error) {
-      console.error('OpenAI validation error:', error)
-      setErrorMessage('Invalid API key. Please check and try again.')
-      return false
-    } finally {
-      setIsValidating(false)
-    }
-  }
-  
-  const validateAnthropicKey = async (key: string): Promise<boolean> => {
-    try {
-      setIsValidating(true)
-      setErrorMessage('')
-      
-      const anthropic = new Anthropic({
-        apiKey: key,
-      })
-      
-      // Make a simple models request to validate the key
-      await anthropic.models.list()
-      return true
-    } catch (error) {
-      console.error('Anthropic validation error:', error)
-      setErrorMessage('Invalid API key. Please check and try again.')
-      return false
-    } finally {
-      setIsValidating(false)
-    }
+
+  interface ValidationParams {
+    key: string
+    provider: Provider
   }
 
-  const validateGeminiKey = async (key: string): Promise<boolean> => {
-    try {
+  const validateKey = async (params: ValidationParams): Promise<boolean> => {
+    try { 
       setIsValidating(true)
       setErrorMessage('')
       
-      const genAI = new GoogleGenAI({apiKey: key});
-      
-      // Make a simple models request to validate the key
-      const d = await genAI.models.get({model: 'gemini-2.0-flash'})
-      console.log(d)
-      return true
-    } catch (error) { 
-      console.error('Gemini validation error:', error)
+      switch (params.provider) {
+        case 'OpenAI': {
+          const openai = new OpenAI({
+            apiKey: params.key,
+            dangerouslyAllowBrowser: true,
+          })
+          await openai.models.list()
+          return true
+        }
+        case 'Anthropic': {
+          const anthropic = new Anthropic({
+            apiKey: params.key,
+          })
+          await anthropic.models.list()
+          return true
+        }
+        case 'Google': {
+          const genAI = new GoogleGenAI({apiKey: params.key});
+          await genAI.models.get({model: 'gemini-2.0-flash'})
+          return true
+        }
+        default: {
+          return false
+        }
+      }
+    } catch (error) {
+      console.error(`Validation error for ${params.provider}:`, error)
       setErrorMessage('Invalid API key. Please check and try again.')
       return false
     } finally {
@@ -90,17 +74,19 @@ export function ApiKeyDialog({ open, provider, onClose, onSave }: ApiKeyDialogPr
     let isValid = false
     
     if (provider === 'OpenAI') {
-      isValid = await validateOpenAIKey(apiKey.trim())
+      isValid = await validateKey({key: apiKey.trim(), provider: 'OpenAI'})
     } else if (provider === 'Anthropic') {
-      isValid = await validateAnthropicKey(apiKey.trim())
+      isValid = await validateKey({key: apiKey.trim(), provider: 'Anthropic'})
     } else if (provider === 'Google') {
-      isValid = await validateGeminiKey(apiKey.trim())
+      isValid = await validateKey({key: apiKey.trim(), provider: 'Google'})
     }
     
     if (isValid) {
-      onSave(apiKey.trim())
+      await saveApiKey(provider, apiKey.trim())
       setApiKey('')
       setErrorMessage('')
+      refreshModels();
+      onClose();
     }
   }
   

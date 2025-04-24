@@ -1,17 +1,20 @@
-import { getApiKey } from './storage';  
-import { Message } from '@/components/ChatMessage';
+import { getApiKey } from '../storage';  
+import { Message } from '@/components/ui/ChatMessage';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import EventSource from 'react-native-sse';
+import { ChatCompleteCallback, ChatProgressCallback } from './chat';
+import { Model } from '../models';
 
 export async function streamAnthropicCompletion(
   messages: Message[],
-  model: string,
-  onProgress: (text: string) => void,
-  onComplete: (modelMetrics: ModelMetrics) => void,
-  streaming: boolean = true
+  model: Model,
+  onProgress: ChatProgressCallback,
+  onComplete: ChatCompleteCallback,
+  streaming: boolean = true,
+  maxTokens: number
 ) {
   try {
-    const apiKey = await getApiKey('anthropic');
+    const apiKey = await getApiKey('Anthropic');
     if (!apiKey) {
       throw new Error('Anthropic API key not found. Please add your API key in settings.');
     }
@@ -35,8 +38,8 @@ export async function streamAnthropicCompletion(
     if (streaming) {
 
       const payload = {
-        model,
-        max_tokens: 1024,
+        model: model.value,
+        max_tokens: maxTokens,
         messages: formattedMessages,
         stream: true,
       }
@@ -62,9 +65,6 @@ export async function streamAnthropicCompletion(
               if (!firstTokenTime) {
                 firstTokenTime = performance.now();
                 modelMetrics.timeToFirstToken = firstTokenTime - startTime;
-                console.log('Start time', startTime);
-                console.log('First token time', firstTokenTime);
-                console.log('Time to first token', modelMetrics.timeToFirstToken);
               }
               responseText += delta?.text;
               onProgress(responseText);
@@ -75,19 +75,16 @@ export async function streamAnthropicCompletion(
           }
         },
         message_stop: (event) => {
-          console.log('Message stop', event.data);
-          onComplete(modelMetrics);
+          onComplete(modelMetrics, model, responseText);
           es.close();
         },
         message_delta: (event) => {
           const data = JSON.parse(event.data);  
-          console.log('Message delta', data);
           const endTime = performance.now();
           const totalTime = endTime - startTime;
 
           modelMetrics.completionTokens = data.usage.output_tokens;
           modelMetrics.tokensPerSecond = modelMetrics.completionTokens / (totalTime / 1000);
-          console.log('Model metrics', modelMetrics);
         },
         message_start: (event) => {
           console.log('Message start', event.data);

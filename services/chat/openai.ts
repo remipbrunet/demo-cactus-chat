@@ -1,17 +1,20 @@
-import { getApiKey } from './storage';
-import { ModelMetrics } from '../utils/modelMetrics';
+import { getApiKey } from '../storage';
+import { ModelMetrics } from '../../utils/modelMetrics';
 import EventSource from 'react-native-sse';
-import { Message } from '../components/ChatMessage';
+import { Message } from '../../components/ui/ChatMessage';
+import { ChatCompleteCallback, ChatProgressCallback } from './chat';
+import { Model } from '../models';
 
 export async function streamOpenAICompletion(
   messages: Message[],
-  model: string,
-  onProgress: (text: string) => void,
-  onComplete: (modelMetrics: ModelMetrics) => void,
-  streaming: boolean = true
+  model: Model,
+  onProgress: ChatProgressCallback,
+  onComplete: ChatCompleteCallback,
+  streaming: boolean = true,
+  maxTokens: number
 ) {
   try {
-    const apiKey = await getApiKey('openai');
+    const apiKey = await getApiKey('OpenAI');
     if (!apiKey) {
       throw new Error('OpenAI API key not found. Please add your API key in settings.');
     }
@@ -36,9 +39,10 @@ export async function streamOpenAICompletion(
     if (streaming) {
 
       const payload = {
-        model,
+        model: model.value,
         messages: formattedMessages,
         stream: true,
+        max_tokens: maxTokens,
         stream_options: { include_usage: true }
       }
 
@@ -86,7 +90,7 @@ export async function streamOpenAICompletion(
           } else {
             console.log('Done. SSE connection closed.')
             es.close()
-            onComplete(modelMetrics)
+            onComplete(modelMetrics, model, responseText)
           }
         } else if (event.type === 'error') {
           console.error('Connection error:', event.message)
@@ -103,16 +107,6 @@ export async function streamOpenAICompletion(
       es.addEventListener('message', listener)
       es.addEventListener('error', listener)
       es.addEventListener('close', listener)
-      // return () => {
-      //   es.removeAllEventListeners()
-      //   es.close()
-      // }
-    } else {
-      // const response = await openai.chat.completions.create({
-      //   model,
-      //   messages: formattedMessages,
-      //   stream: false
-      // })
     }
   } catch (error) {
     console.error('Error during chat completion:', error);

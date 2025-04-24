@@ -11,3 +11,6 @@ expo-env.d.ts
 
 # we now use yarn
 package-lock.json
+
+*.ipa
+*.apk

@@ -1,39 +1,159 @@
-import { YStack, Button, Text, XStack } from 'tamagui'
-import { Modal, View, TouchableWithoutFeedback, Animated } from 'react-native'
-import { useEffect, useRef } from 'react'
+import { YStack, Button, Text, XStack, Slider, Tabs } from 'tamagui'
+import { Modal, View, TouchableWithoutFeedback, Animated, ScrollView, Alert } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
 import { Check, Trash } from '@tamagui/lucide-icons'
+import { deleteApiKey, removeLocalModel } from '@/services/storage'
+import { downloadModel, validateModelUrl } from '@/utils/modelUtils'
+import { useModelContext } from '@/contexts/modelContext'
+import { ApiKeyDialog } from './ApiKeyDialog'
+import { Provider } from '@/services/models'
+import { extractModelNameFromUrl } from '@/utils/modelUtils'
+import { ModelListItem } from './ui/settings/ModelListItem'
+import { ModelUrlField } from './ui/settings/ModelUrlField'
+
+// Recommended model for first-time users
+const RECOMMENDED_MODELS = [
+  {
+    url: "https://huggingface.co/unsloth/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q8_0.gguf",
+    name: "SmolLM 135M",
+    comment: "(fast but stupid)",
+    default: false,
+  },
+  {
+    url: "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q8_0.gguf",
+    name: "Qwen 1.5B",
+    comment: "(best quality)",
+    default: true,
+  },
+  {
+    url: "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q8_0.gguf",
+    name: "Gemma 3 1B",
+    comment: "(faster, less intelligent)",
+    default: false,
+  }
+];
 
 interface SettingsSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onConnectOpenAI: () => void
-  onConnectAnthropic: () => void
-  onDeleteOpenAI?: () => void
-  onDeleteAnthropic?: () => void
-  hasOpenAIKey: boolean
-  hasAnthropicKey: boolean
-  hasGeminiKey: boolean
-  onConnectGemini: () => void
-  onDeleteGemini: () => void
+}
+
+interface ExtendedProviderType {
+  name: Provider
+  hasKey: boolean
 }
 
 export function SettingsSheet({ 
   open, 
   onOpenChange,
-  onConnectOpenAI,
-  onConnectAnthropic,
-  onDeleteOpenAI,
-  onDeleteAnthropic,
-  hasOpenAIKey,
-  hasAnthropicKey,
-  hasGeminiKey,
-  onConnectGemini,
-  onDeleteGemini
 }: SettingsSheetProps) {
+  // Model URL input state
+  const { availableModels, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey, tokenGenerationLimit, setTokenGenerationLimit } = useModelContext();
+  const [modelUrl, setModelUrl] = useState('');
+  const [downloadInProgress, setDownloadInProgress] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [apiKeyDialogProvider, setApiKeyDialogProvider] = useState<Provider | null>(null);
   // Fade-in animation for overlay
   const fadeAnim = useRef(new Animated.Value(0)).current;
   // Slide-up animation for the sheet
   const slideAnim = useRef(new Animated.Value(300)).current;
+
+  const providers: ExtendedProviderType[] = [
+    {
+      name: 'OpenAI',
+      hasKey: hasOpenAIKey
+    },
+    {
+      name: 'Anthropic',
+      hasKey: hasAnthropicKey
+    },
+    {
+      name: 'Google',
+      hasKey: hasGeminiKey
+    }
+  ]
+
+  const handleModelDownload = async (urlOverride?: string) => {
+    setErrorMessage('');
+
+    const urlToDownload = urlOverride || modelUrl;
+    
+    // Validate URL
+    const { valid, reason, contentLength } = await validateModelUrl(urlToDownload);
+    if (!valid) {
+      setErrorMessage(reason || 'Invalid URL');
+      return;
+    }
+
+    Alert.alert(
+      `Download ${extractModelNameFromUrl(urlToDownload)}`, 
+      `This will download ${contentLength ? (contentLength / 10e8).toFixed(2) + 'GB' : 'unknown size'} of data. We recommend doing this over WiFi.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Download",
+          style: "default",
+          onPress: async () => {
+            try {
+              setDownloadInProgress(true);
+              await downloadModel(urlToDownload, setDownloadProgress);
+              setModelUrl('');
+              refreshModels();
+            } catch (error: any) {
+              setErrorMessage(error.message || 'Download failed');
+            } finally {
+              setDownloadInProgress(false);
+              setDownloadProgress(0);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeleteApiKey = (provider: Provider) => {
+    Alert.alert(
+      `Delete ${provider} Key`, 
+      `Are you sure you want to remove your ${provider} API key?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await deleteApiKey(provider).then(() => refreshModels());
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeleteModel = (modelValue: string) => {
+    Alert.alert(
+      `Delete ${modelValue}`, 
+      `Are you sure you want to delete this model? This cannot be undone. You will need to download the model again to use it.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await removeLocalModel(modelValue).then(() => refreshModels());
+          }
+        }
+      ]
+    );
+  };
   
   useEffect(() => {
     if (open) {
@@ -59,7 +179,7 @@ export function SettingsSheet({
   
   return (
     <Modal
-      animationType="none"
+      animationType="fade"
       transparent={true}
       visible={open}
       onRequestClose={() => onOpenChange(false)}
@@ -100,98 +220,151 @@ export function SettingsSheet({
             </XStack>
             
             <Text fontSize={18} fontWeight="600" textAlign="center" marginBottom={16}>
-              Developer Settings
+              Settings
             </Text>
 
-            <Text fontSize={14} fontWeight="300" textAlign="center" marginBottom={16}>
-              In addition to using Cactus models in private mode, you can add API keys for other model providers.{'\n\n'}This is helpful for throughput and latency benchmarking.
-            </Text>
-            
-            <XStack alignItems="center" marginBottom={8}>
-              <Button 
-                flex={1}
-                size="$4" 
-                marginTop={8}
-                marginBottom={0}
-                disabled={hasOpenAIKey}
-                opacity={hasOpenAIKey ? 0.6 : 1}
-                onPress={() => {
-                  onConnectOpenAI();
-                }}
-                icon={hasOpenAIKey ? Check : undefined}
+            <Tabs 
+              orientation="horizontal" 
+              flexDirection="column" 
+              defaultValue="general"
+            >
+              <Tabs.List
+                disablePassBorderRadius="bottom"
+                aria-label="Manage your account"
               >
-                {hasOpenAIKey ? 'Connected to OpenAI' : 'Connect OpenAI'}
-              </Button>
-              
-              {hasOpenAIKey && onDeleteOpenAI && (
-                <Button
-                  marginLeft={8}
+                <Tabs.Tab value="general" flex={1}>
+                  <Text fontSize={16} fontWeight="500" marginTop={8} marginBottom={8}>
+                    General
+                  </Text>
+                </Tabs.Tab>
+                <Tabs.Tab value="local" flex={1}>
+                  <Text fontSize={16} fontWeight="500" marginTop={8} marginBottom={8}>
+                    Models
+                  </Text>
+                </Tabs.Tab>
+                <Tabs.Tab value="api" flex={1}>
+                  <Text fontSize={16} fontWeight="500" marginTop={8} marginBottom={8}>
+                    API Keys
+                  </Text>
+                </Tabs.Tab>
+              </Tabs.List>
+
+              <Tabs.Content value="general" paddingTop={16} gap="$4">
+
+                <Text fontSize={14} fontWeight="300" textAlign="center" marginBottom={16}>
+                  Token generation limit: {tokenGenerationLimit}
+                </Text>
+                <Slider size="$1" width='100%' defaultValue={[tokenGenerationLimit]} max={2500} min={100} step={25} onValueChange={(value: number[]) => setTokenGenerationLimit(value[0])}>
+                  <Slider.Track>
+                    <Slider.TrackActive />
+                    </Slider.Track>
+                    <Slider.Thumb circular index={0} />
+                  </Slider>
+
+                {RECOMMENDED_MODELS.filter(model => model.default).map((model) => (
+                  <ModelListItem
+                    key={model.url}
+                    modelName={`Default model (${model.name})`}
+                    downloaded={availableModels.some(localModel => localModel.value === extractModelNameFromUrl(model.url))}
+                    downloadInProgress={downloadInProgress}
+                    onDownloadClick={() => handleModelDownload(model.url)}
+                    onDeleteClick={() => handleDeleteModel(model.url)}
+                  />
+                ))}
+
+              </Tabs.Content>
+            
+              <Tabs.Content value="local" paddingTop={16}>
+                <ScrollView showsVerticalScrollIndicator={false}>
+
+                  {/* recommended models section */}
+                  {RECOMMENDED_MODELS.filter(model => !availableModels.some(localModel => localModel.value === extractModelNameFromUrl(model.url))).map((model) => (
+                    <ModelListItem
+                      key={model.url}
+                      modelName={`${model.name} ${model.comment}`}
+                      downloaded={false}
+                      downloadInProgress={downloadInProgress}
+                      onDownloadClick={() => handleModelDownload(model.url)}
+                      onDeleteClick={() => handleDeleteModel(model.url)}
+                    />
+                  ))} 
+                  
+                  {/* List of local models */}
+                  {availableModels.filter(model => model.isLocal).map(model => (
+                    <ModelListItem
+                      key={model.value}
+                      modelName={model.value}
+                      downloaded={true}
+                      downloadInProgress={downloadInProgress}
+                      onDownloadClick={() => handleModelDownload()}
+                      onDeleteClick={() => handleDeleteModel(model.value)}
+                    />
+                  ))}
+
+                  <ModelUrlField
+                    downloadInProgress={downloadInProgress}
+                    downloadProgress={downloadProgress}
+                    modelUrl={modelUrl}
+                    setModelUrl={setModelUrl}
+                    errorMessage={errorMessage}
+                    setErrorMessage={setErrorMessage}
+                    handleModelDownload={handleModelDownload}
+                  />
+
+                </ScrollView>
+
+              </Tabs.Content>
+              <Tabs.Content value="api" paddingTop={16}>
+
+              <Text fontSize={14} fontWeight="300" textAlign="center" marginBottom={16}>
+                Add keys for API providers to benchmark throughput and latency.
+              </Text>
+
+              <ScrollView>
+
+              {(providers).map(provider => (
+                <XStack key={provider.name} alignItems="center" marginBottom={8}>
+                  <Button 
+                  flex={1}
+                  size="$4" 
                   marginTop={8}
                   marginBottom={0}
-                  size="$4"
-                  theme="red"
-                  icon={Trash}
-                  onPress={onDeleteOpenAI}
-                />
-              )}
-            </XStack>
-            
-            <XStack alignItems="center" marginBottom={8}>
-              <Button 
-                flex={1}
-                size="$4" 
-                marginTop={8}
-                disabled={hasAnthropicKey}
-                opacity={hasAnthropicKey ? 0.6 : 1}
-                onPress={() => {
-                  onConnectAnthropic();
-                }}
-                icon={hasAnthropicKey ? Check : undefined}
-              >
-                {hasAnthropicKey ? 'Connected to Anthropic' : 'Connect Anthropic'}
-              </Button>
-              
-              {hasAnthropicKey && onDeleteAnthropic && (
-                <Button
-                  marginLeft={8}
-                  marginTop={8}
-                  size="$4"
-                  theme="red"
-                  icon={Trash}
-                  onPress={onDeleteAnthropic}
-                />
-              )}
-            </XStack>
+                  disabled={provider.hasKey}
+                  opacity={provider.hasKey ? 0.6 : 1}
+                  onPress={() => {
+                    setApiKeyDialogProvider(provider.name);
+                  }}
+                  icon={provider.hasKey ? Check : undefined}
+                >
+                  {provider.hasKey ? `Connected to ${provider.name}` : `Connect ${provider.name}`}
+                </Button>
+                
+                {provider.hasKey && (
+                  <Button
+                    marginLeft={8}
+                    marginTop={8}
+                    marginBottom={0}
+                    size="$4"
+                    theme="red"
+                    icon={Trash}
+                    onPress={() =>handleDeleteApiKey(provider.name)}
+                  />
+                )}
+              </XStack>
+              ))}
+              </ScrollView>
+              </Tabs.Content>
+            </Tabs>
 
-            <XStack alignItems="center" marginBottom={8}>
-              <Button 
-                flex={1}
-                size="$4" 
-                marginTop={8}
-                disabled={hasGeminiKey}
-                opacity={hasGeminiKey ? 0.6 : 1}
-                onPress={() => {
-                  onConnectGemini();
-                }}
-                icon={hasGeminiKey ? Check : undefined}
-              >
-                {hasGeminiKey ? 'Connected to Gemini' : 'Connect Gemini'}
-              </Button>
-              
-              {hasGeminiKey && onDeleteGemini && (
-                <Button
-                  marginLeft={8}
-                  marginTop={8}
-                  size="$4"
-                  theme="red"
-                  icon={Trash}
-                  onPress={onDeleteGemini}
-                />
-              )}
-            </XStack>
           </YStack>
+
         </Animated.View>
       </Animated.View>
+      <ApiKeyDialog
+        open={apiKeyDialogProvider !== null}
+        provider={apiKeyDialogProvider || 'Cactus'} // Cactus is just a placeholder so we don't get type errors in ApiKeyDialog
+        onClose={() => setApiKeyDialogProvider(null)}
+      />
     </Modal>
   )
 } 

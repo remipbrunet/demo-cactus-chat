@@ -1,21 +1,22 @@
 import { streamOpenAICompletion } from './openai';
 import { streamAnthropicCompletion } from './anthropic';
 import { streamGeminiCompletion } from './gemini';
-import { Message } from '@/components/ChatMessage';
-import { Model } from './models';
+import { streamLlamaCompletion } from './llama-local';
+import { Message } from '@/components/ui/ChatMessage';
+import { Model } from '../models';
 import { ModelMetrics } from '@/utils/modelMetrics';
 
-// Define unified interfaces
 export interface ChatProgressCallback {
   (text: string): void;
 }
 
 export interface ChatCompleteCallback {
-  (metrics: ModelMetrics): void;
+  (metrics: ModelMetrics, model: Model, completeMessage: string): void;
 }
 
 export interface ChatOptions {
   streaming?: boolean;
+  voiceMode?: boolean; // only used by Llama local
 }
 
 /**
@@ -26,39 +27,51 @@ export async function sendChatMessage(
   model: Model,
   onProgress: ChatProgressCallback,
   onComplete: ChatCompleteCallback,
-  options: ChatOptions = { streaming: true }
+  options: ChatOptions = { streaming: true, voiceMode: false },
+  maxTokens: number
 ): Promise<void> {
   try {
     switch (model.provider) {
-      case 'openai':
+      case 'OpenAI':
         return await streamOpenAICompletion(
           messages, 
-          model.value, 
+          model, 
           onProgress, 
           onComplete, 
-          options.streaming
+          options.streaming,
+          maxTokens,
         );
         
-      case 'anthropic':
+      case 'Anthropic':
         return await streamAnthropicCompletion(
           messages, 
-          model.value, 
+          model, 
           onProgress, 
           onComplete, 
-          options.streaming
+          options.streaming,
+          maxTokens,
         );
         
-      case 'google':
+      case 'Google':
         return await streamGeminiCompletion(
           messages, 
-          model.value, 
+          model, 
           onProgress, 
           onComplete, 
-          options.streaming
+          options.streaming,
+          maxTokens,
         );
         
-      case 'cactus':
-        throw new Error('Cactus provider not yet implemented');
+      case 'Cactus':
+        return await streamLlamaCompletion(
+          messages, 
+          model, 
+          onProgress, 
+          onComplete, 
+          options.streaming,
+          maxTokens,
+          options.voiceMode
+        );
         
       default:
         throw new Error(`Unknown provider: ${model.provider}`);

@@ -1,78 +1,47 @@
-import { XStack, YStack, Input, Button, ScrollView } from 'tamagui';
-import { useRef, useState, useEffect } from 'react';
-import { KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { XStack, YStack, Button, ScrollView } from 'tamagui';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import { KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Menu, Settings, Send } from '@tamagui/lucide-icons';
-import { ChatMessage } from '../components/ChatMessage';
+import { ChatMessage, createUserMessage } from '../components/ui/ChatMessage';
 import { ModelPicker } from '../components/ModelPicker';
 import { ConversationSidebar } from '../components/ConversationSidebar';
 import { SettingsSheet } from '../components/SettingsSheet';
-import { ApiKeyDialog } from '../components/ApiKeyDialog';
-// import { generateUniqueId, streamChatCompletion } from '../services/openai';
-// import { streamAnthropicCompletion } from '../services/anthropic';
-import { Model, models as initialModels, refreshModelAvailability } from '../services/models';
-import { sendChatMessage, generateUniqueId } from '@/services/chat';
+import { sendChatMessage, generateUniqueId } from '@/services/chat/chat';
 import { 
   Conversation, 
   saveConversation, 
   getConversation, 
-  saveLastUsedModel, 
-  getLastUsedModel,
   getConversations,
-  getApiKey,
-  saveApiKey,
-  deleteApiKey
 } from '../services/storage';
 import { ModelMetrics } from '@/utils/modelMetrics';
-import { Message } from '@/components/ChatMessage';
-// import { streamGeminiCompletion } from '../services/gemini';
+import { Message } from '@/components/ui/ChatMessage';
+import { useModelContext } from '@/contexts/modelContext';
+import { logChatCompletionDiagnostics } from '@/services/diagnostics';
+import { MessageInput } from '@/components/ui/MessageInput';
+import { Model } from '@/services/models';
+import { VoiceModeOverlay } from '@/components/VoiceModeScreen';
 
 export default function ChatScreen() {
   const [open, setOpen] = useState(false);
-  const [value, setValue] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState<Model>(initialModels[0]);
-  const [availableModels, setAvailableModels] = useState<Model[]>(initialModels);
-  const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
+  const [currentAIMessage, setCurrentAIMessage] = useState<string>('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [modelIsLoading, setModelIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string>(generateUniqueId());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [allConversations, setAllConversations] = useState<Conversation[]>([]);
-  const [openAIDialogOpen, setOpenAIDialogOpen] = useState(false);
-  const [anthropicDialogOpen, setAnthropicDialogOpen] = useState(false);
-  const [geminiDialogOpen, setGeminiDialogOpen] = useState(false);
-  const [hasOpenAIKey, setHasOpenAIKey] = useState(false);
-  const [hasAnthropicKey, setHasAnthropicKey] = useState(false);
-  const [hasGeminiKey, setHasGeminiKey] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
+  
   const scrollViewRef = useRef<any>(null);
-
-  // Load API keys and update model availability
-  useEffect(() => {
-    const loadApiKeys = async () => {
-      const openAIKey = await getApiKey('openai');
-      const anthropicKey = await getApiKey('anthropic');
-      const geminiKey = await getApiKey('gemini');
-      setHasOpenAIKey(!!openAIKey);
-      setHasAnthropicKey(!!anthropicKey);
-      setHasGeminiKey(!!geminiKey);
-      // Update available models based on API keys
-      const updatedModels = await refreshModelAvailability();
-      setAvailableModels(updatedModels);
-      
-      // If the currently selected model is now disabled, select the first available model
-      if (updatedModels.find(m => m.value === selectedModel.value)?.disabled) {
-        const firstAvailableModel = updatedModels.find(m => !m.disabled);
-        if (firstAvailableModel) {
-          setSelectedModel(firstAvailableModel);
-          setValue(firstAvailableModel.value);
-          await saveLastUsedModel(firstAvailableModel.value);
-        }
-      }
-    };
-    
-    loadApiKeys();
-  }, [hasOpenAIKey, hasAnthropicKey, hasGeminiKey]);
+  const { selectedModel, tokenGenerationLimit } = useModelContext();
+  
+  // Single ref for streaming updates
+  const streamingUpdateRef = useRef<{
+    text: string;
+    frameId: number | null;
+  }>({ text: '', frameId: null });
 
   // Load conversations list
   useEffect(() => {
@@ -82,38 +51,22 @@ export default function ChatScreen() {
     };
     
     loadConversations();
-  }, [messages]); // Reload when messages change to keep list updated
+  }, []); // Reload once
 
   // Load initial state
   useEffect(() => {
     const loadInitialState = async () => {
-      // Load last used model
-      const lastModelId = await getLastUsedModel();
-      if (lastModelId) {
-        const lastModel = initialModels.find(m => m.value === lastModelId);
-        if (lastModel && !lastModel.disabled) {
-          setSelectedModel(lastModel);
-          setValue(lastModelId);
-        }
-      }
       
       // Load conversation
       const conversation = await getConversation(conversationId);
       if (conversation) {
         setMessages(conversation.messages);
         // Set model from conversation if available
-        const model = initialModels.find(m => m.value === conversation.model.value);
-        if (model && !model.disabled) {
-          setSelectedModel(model);
-          setValue(model.value);
-        }
+        // const model = initialModels.find(m => m.value === conversation.model.value);
+        // if (model && !model.disabled) {
+          // setValue(model.value);
+        // }
       } else {
-        // Create a new conversation with welcome message
-        // const welcomeMessage: Message = {
-        //   id: generateUniqueId(),
-        //   isUser: false,
-        //   text: 'Hello! How can I help you today?'
-        // };
         setMessages([]);
         saveCurrentConversation([]);
       }
@@ -125,6 +78,7 @@ export default function ChatScreen() {
   // Save conversation when messages change
   const saveCurrentConversation = async (currentMessages: Message[]) => {
     if (currentMessages.length === 0) return;
+    if (!selectedModel) return;
     
     // Get title from first user message or use default
     const firstUserMessage = currentMessages.find(m => m.isUser);
@@ -142,15 +96,6 @@ export default function ChatScreen() {
     
     await saveConversation(conversation);
   };
-
-  const handleModelSelect = (model: Model) => {
-    setSelectedModel(model);
-    saveLastUsedModel(model.value);
-  };
-
-  const handleSelectConversation = async (id: string) => {
-    setConversationId(id);
-  };
   
   const createNewConversation = () => {
     // Generate a new conversation ID
@@ -160,290 +105,89 @@ export default function ChatScreen() {
     setMessages([]);
   };
 
-  const handleConnectOpenAI = () => {
-    setSettingsOpen(false);
-    setOpenAIDialogOpen(true);
-  };
-  
-  const handleConnectAnthropic = () => {
-    setSettingsOpen(false);
-    setAnthropicDialogOpen(true);
-  };
-  
-  const handleSaveOpenAIKey = async (key: string) => {
-    await saveApiKey('openai', key);
-    setHasOpenAIKey(true);
-    setOpenAIDialogOpen(false);
-  };
-  
-  const handleSaveAnthropicKey = async (key: string) => {
-    await saveApiKey('anthropic', key);
-    setHasAnthropicKey(true);
-    setAnthropicDialogOpen(false);
-  };
-
-  const handleConnectGemini = () => {
-    setSettingsOpen(false);
-    setGeminiDialogOpen(true);
-  };
-  
-  const handleSaveGeminiKey = async (key: string) => {
-    await saveApiKey('gemini', key);
-    setHasGeminiKey(true);
-    setGeminiDialogOpen(false);
-  };
-
-  const handleDeleteOpenAIKey = () => {
-    Alert.alert(
-      "Delete OpenAI Key", 
-      "Are you sure you want to remove your OpenAI API key?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            await deleteApiKey('openai');
-            setHasOpenAIKey(false);
-          }
+  function processFinishedMessage(message: string, model: Model, modelMetrics?: ModelMetrics) {
+    // cleanup function when the streaming ends
+    // called either when the streaming is complete or when there is an error
+    setIsStreaming(false);
+    setCurrentAIMessage("");
+    setMessages(prev => {
+      const updated = [...prev];
+      if (updated.length > 0) {
+        const AImessage: Message = {
+          id: generateUniqueId(),
+          isUser: false,
+          text: message,
+          model: model,
+          metrics: modelMetrics
         }
-      ]
-    );
-  };
-  
-  const handleDeleteAnthropicKey = () => {
-    Alert.alert(
-      "Delete Anthropic Key", 
-      "Are you sure you want to remove your Anthropic API key?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            await deleteApiKey('anthropic');
-            setHasAnthropicKey(false);
-          }
-        }
-      ]
-    );
-  };
+        updated.push(AImessage);
+      }
+      saveCurrentConversation(updated); // save to storage
+      getConversations().then(setAllConversations); // update the conversations list
+      // scrollViewRef.current?.scrollToEnd({ animated: true }); // scroll to the bottom
+      streamingUpdateRef.current.text = ''; // clear the streaming text
+      return updated;
+    });
+  }
 
-  const handleDeleteGeminiKey = () => {
-    Alert.alert(
-      "Delete Gemini Key", 
-      "Are you sure you want to remove your Gemini API key?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            await deleteApiKey('gemini');
-            setHasGeminiKey(false);
-          }
-        }
-      ]
-    );
-  };
+  function chatCallbackPartialMessage(streamText: string) {
+    streamingUpdateRef.current.text = streamText;
+    // Only schedule a frame if one isn't already pending
+    if (streamingUpdateRef.current.frameId === null) {
+      streamingUpdateRef.current.frameId = requestAnimationFrame(() => {
+        setCurrentAIMessage(streamingUpdateRef.current.text);
+        streamingUpdateRef.current.frameId = null;
+      });
+    }
+  }
 
-  const sendMessage = async () => {
+  function chatCallbackCompleteMessage(modelMetrics: ModelMetrics, model: Model) {
+    setIsStreaming(false);
+    
+    if (streamingUpdateRef.current.frameId !== null) {
+      cancelAnimationFrame(streamingUpdateRef.current.frameId);
+      streamingUpdateRef.current.frameId = null;
+    }
+    logChatCompletionDiagnostics({
+      llm_model: model.value,
+      tokens_per_second: modelMetrics.tokensPerSecond,
+      time_to_first_token: modelMetrics.timeToFirstToken,
+      generated_tokens: modelMetrics.completionTokens,
+      streaming: true,
+    });
+    processFinishedMessage(streamingUpdateRef.current.text.trimEnd(), model, modelMetrics);
+  }
+
+  const sendMessage = async (inputText: string) => {
     if (!inputText.trim() || isStreaming) return;
-    
-    // Add user message
-    const userMessage: Message = {
-      id: generateUniqueId(),
-      isUser: true,
-      text: inputText,
-      model: selectedModel
-    };
-    
+    if (!selectedModel) return;
+
+    const userMessage: Message = createUserMessage(inputText, selectedModel);
+
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
-    setInputText('');
+    saveCurrentConversation(updatedMessages); 
     
-    // Save conversation with the user message
-    await saveCurrentConversation(updatedMessages);
-
-    // Add placeholder for assistant response
-    const assistantMessage: Message = {
-      id: generateUniqueId(),
-      isUser: false,
-      text: '...',
-      model: selectedModel
-    };
-    
-    const messagesWithAssistant = [...updatedMessages, assistantMessage];
-    setMessages(messagesWithAssistant);
     setIsStreaming(true);
     try {
       await sendChatMessage(
         updatedMessages,
         selectedModel,
-        (streamText: string) => {
-          // Update the assistant message with streamed content
-          setMessages(prev => {
-            const updated = [...prev];
-            const lastMessage = updated[updated.length - 1];
-            if (!lastMessage.isUser) {
-              lastMessage.text = streamText;
-            }
-            return updated;
-          });
-        },
-        (modelMetrics: ModelMetrics) => {
-          // Final update when streaming completes
-          setIsStreaming(false);
-          // Save the updated conversation
-          setMessages(prev => {
-            const updated = [...prev];
-            const lastMessage = updated[updated.length - 1];
-            lastMessage.text = lastMessage.text.trimEnd();
-            lastMessage.metrics = modelMetrics;
-            saveCurrentConversation(updated);
-            return updated;
-          });
-        }
-      );
-    // try {
-      // if (selectedModel.provider === 'openai') {
-      //   const result = await streamChatCompletion(
-      //     updatedMessages,
-      //     selectedModel.value,
-      //     (streamText: string) => {
-      //       // Update the assistant message with streamed content
-      //       setMessages(prev => {
-      //         const updated = [...prev];
-      //         const lastMessage = updated[updated.length - 1];
-      //         if (!lastMessage.isUser) {
-      //           lastMessage.text = streamText;
-      //         }
-      //         return updated;
-      //       });
-      //     },
-      //     (modelMetrics: ModelMetrics) => {
-      //       // Final update when streaming completes
-      //       setIsStreaming(false);
-      //       // Save the updated conversation
-      //       setMessages(prev => {
-      //         const updated = [...prev];
-      //         const lastMessage = updated[updated.length - 1];
-      //         lastMessage.text = lastMessage.text.trimEnd();
-      //         lastMessage.metrics = modelMetrics;
-      //         saveCurrentConversation(updated);
-      //         return updated;
-      //       });
-      //     }
-      //   );
-        
-      // } else if (selectedModel.provider === 'anthropic') {
-      //   const result = await streamAnthropicCompletion(
-      //     updatedMessages,
-      //     selectedModel.value,
-      //     (streamText: string) => {
-      //       setMessages(prev => {
-      //         const updated = [...prev];
-      //         const lastMessage = updated[updated.length - 1];
-      //         if (!lastMessage.isUser) {
-      //           lastMessage.text = streamText;
-      //         }
-      //         return updated;
-      //       });
-      //     },
-      //     (modelMetrics: ModelMetrics) => {
-      //       // Final update when streaming completes
-      //       setIsStreaming(false);
-      //       // Save the updated conversation
-      //       setMessages(prev => {
-      //         const updated = [...prev];
-      //         const lastMessage = updated[updated.length - 1];
-      //         lastMessage.text = lastMessage.text.trimEnd();
-      //         lastMessage.metrics = modelMetrics;
-      //         saveCurrentConversation(updated);
-      //         return updated;
-      //       });
-      //     }
-      //   );
-  
-      // } else if (selectedModel.provider === 'cactus') {
-      //   // Future implementation for Cactus provider
-      //   setTimeout(() => {
-      //     setMessages(prev => {
-      //       const updated = [...prev];
-      //       const lastMessage = updated[updated.length - 1];
-      //       if (!lastMessage.isUser) {
-      //         lastMessage.text = 'Cactus provider not yet implemented.';
-      //       }
-            
-      //       // Save the updated conversation
-      //       saveCurrentConversation(updated);
-      //       return updated;
-      //     });
-      //     setIsStreaming(false);
-      //   }, 1000);
-      // } else if (selectedModel.provider === 'google') {
-      //   const result = await streamGeminiCompletion(
-      //     updatedMessages,
-      //     selectedModel.value,
-      //     (streamText: string) => {
-      //       // Update the assistant message with streamed content
-      //       setMessages(prev => {
-      //         const updated = [...prev];
-      //         const lastMessage = updated[updated.length - 1];
-      //         if (!lastMessage.isUser) {
-      //           lastMessage.text = streamText;
-      //         }
-      //         return updated;
-      //       });
-      //     },
-      //     (modelMetrics: ModelMetrics) => {
-      //       // Final update when streaming completes
-      //       setIsStreaming(false);  
-      //       // Save the updated conversation
-      //       setMessages(prev => {
-      //         const updated = [...prev];
-      //         const lastMessage = updated[updated.length - 1];
-      //         lastMessage.text = lastMessage.text.trimEnd();
-      //         lastMessage.metrics = modelMetrics;
-      //         saveCurrentConversation(updated);
-      //         return updated;
-      //       });
-      //     }
-      //   );
-      // }
-      
+        chatCallbackPartialMessage,
+        chatCallbackCompleteMessage,
+        { streaming: true },
+        tokenGenerationLimit
+      );      
     } catch (error) {
       console.error('Error in chat:', error);
-      setIsStreaming(false);
-      
-      // Update the message to show error
-      setMessages(prev => {
-        const updated = [...prev];
-        const lastMessage = updated[updated.length - 1];
-        if (!lastMessage.isUser) {
-          lastMessage.text = 'Sorry, there was an error processing your request.';
-        }
-        
-        // Save the conversation even with the error
-        saveCurrentConversation(updated);
-        return updated;
-      });
+      processFinishedMessage('Sorry, there was an error processing your request.', selectedModel, undefined);
     }
 
     // Scroll to bottom
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
-  };
+  }
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -451,7 +195,7 @@ export default function ChatScreen() {
         isOpen={sidebarOpen}
         conversations={allConversations}
         onClose={() => setSidebarOpen(false)}
-        onSelectConversation={handleSelectConversation}
+        onSelectConversation={setConversationId}
         onNewConversation={createNewConversation}
         zIndex={1000}
       />
@@ -470,7 +214,6 @@ export default function ChatScreen() {
           >
             <Button 
               icon={Menu} 
-              // circular 
               size="$2" 
               chromeless 
               onPress={() => {
@@ -480,16 +223,13 @@ export default function ChatScreen() {
             />
             <ModelPicker
               open={open}
-              value={value}
+              modelIsLoading={modelIsLoading}
+              setModelIsLoading={setModelIsLoading}
               setOpen={setOpen}
-              setValue={setValue}
-              onSelectModel={handleModelSelect}
               zIndex={50}
-              models={availableModels}
             />
             <Button 
               icon={Settings} 
-              // circular 
               size="$2" 
               chromeless 
               onPress={() => setSettingsOpen(true)}
@@ -500,63 +240,36 @@ export default function ChatScreen() {
             flex={1} 
             bounces={false}
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            {messages.map(message => (
+            {([...messages, ...(currentAIMessage ? [{
+              id: generateUniqueId(),
+              isUser: false,
+              text: currentAIMessage,
+              model: selectedModel
+            } as Message] : [])]).map(message => (
               <ChatMessage key={message.id} message={message} />
             ))}
           </ScrollView>
-          <XStack paddingVertical={16}>
-            <Input 
-              flex={1} 
-              marginRight={8}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder="Message..."
-              onSubmitEditing={sendMessage}
-            />
-            <Button 
-              icon={Send}
-              onPress={sendMessage}
-              disabled={isStreaming || !inputText.trim()}
-              opacity={isStreaming || !inputText.trim() ? 0.5 : 1}
-            />
-          </XStack>
+          <MessageInput 
+            sendMessage={sendMessage}
+            isStreaming={isStreaming}
+            modelIsLoading={modelIsLoading}
+            selectedModel={selectedModel}
+            setVoiceMode={setVoiceMode}
+          />
         </YStack>
       </KeyboardAvoidingView>
       
       <SettingsSheet
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
-        onConnectOpenAI={handleConnectOpenAI}
-        onConnectAnthropic={handleConnectAnthropic}
-        onConnectGemini={handleConnectGemini}
-        onDeleteOpenAI={handleDeleteOpenAIKey}
-        onDeleteAnthropic={handleDeleteAnthropicKey}
-        onDeleteGemini={handleDeleteGeminiKey}
-        hasOpenAIKey={hasOpenAIKey}
-        hasAnthropicKey={hasAnthropicKey}
-        hasGeminiKey={hasGeminiKey}
       />
-      
-      <ApiKeyDialog
-        open={openAIDialogOpen}
-        provider="OpenAI"
-        onClose={() => setOpenAIDialogOpen(false)}
-        onSave={handleSaveOpenAIKey}
-      />
-      
-      <ApiKeyDialog
-        open={anthropicDialogOpen}
-        provider="Anthropic"
-        onClose={() => setAnthropicDialogOpen(false)}
-        onSave={handleSaveAnthropicKey}
-      />
-
-      <ApiKeyDialog
-        open={geminiDialogOpen}
-        provider="Google"
-        onClose={() => setGeminiDialogOpen(false)}
-        onSave={handleSaveGeminiKey}
+      <VoiceModeOverlay
+        visible={voiceMode}
+        onClose={() => setVoiceMode(false)}
+        messages={messages}
+        setMessages={setMessages}
       />
     </SafeAreaView>
   );

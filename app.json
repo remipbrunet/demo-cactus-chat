@@ -12,16 +12,22 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rshemetsubuser.myapp",
-      "buildNumber": "3",
+      "buildNumber": "5",
       "config": {
         "usesNonExemptEncryption": false
-      }
+      },
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "This app does not access your photos or videos.",
+        "NSPhotoLibraryAddUsageDescription": "This app does not save photos to your library."
+      },
+      "appleTeamId": "58U7XV8H43"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/bw-logo.png",
         "backgroundColor": "#ffffff"
       },
+      "icon": "./assets/images/bw-logo.png",
       "package": "com.rshemetsubuser.myapp"
     },
     "web": {
@@ -34,12 +40,13 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/bw-logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "@react-native-voice/voice"
     ],
     "experiments": {
       "typedRoutes": true

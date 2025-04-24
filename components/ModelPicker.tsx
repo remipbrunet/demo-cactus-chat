@@ -1,13 +1,15 @@
-import { ChevronDown, ChevronUp } from '@tamagui/lucide-icons';
+import { ChevronDown, ChevronRight, ChevronUp } from '@tamagui/lucide-icons';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { Dispatch, SetStateAction } from 'react';
-import { Model, models as defaultModels } from '../services/models';
+import { Dispatch, SetStateAction, useState } from 'react';
 import { ViewStyle } from 'react-native';
+import { truncateModelName } from '@/utils/modelUtils';
+import { useModelContext } from '@/contexts/modelContext';
+import { saveLastUsedModel } from '@/services/storage';
+import { ensureLocalModelContext } from '@/utils/localModelContext';
+import { Spinner, Text, XStack } from 'tamagui';
 
 const dropdownStyles = {
   container: {
-    // width: 'fit-content', // React Native doesn't support 'fit-content'
-    // Use auto instead
     width: 'auto'
   } as ViewStyle,
   picker: {
@@ -29,35 +31,46 @@ const dropdownStyles = {
 
 interface ModelPickerProps {
   open: boolean;
-  value: string | null;
+  modelIsLoading: boolean;
+  setModelIsLoading: Dispatch<SetStateAction<boolean>>;
   setOpen: Dispatch<SetStateAction<boolean>>;
-  setValue: Dispatch<SetStateAction<string | null>>;
-  onSelectModel: (model: Model) => void;
   zIndex?: number;
-  models?: Model[];
 }
 
 export function ModelPicker({ 
   open, 
-  value, 
+  modelIsLoading,
+  setModelIsLoading,
   setOpen, 
-  setValue, 
-  onSelectModel, 
   zIndex = 50,
-  models = defaultModels
 }: ModelPickerProps) {
-  const items = models.map(model => ({
-    label: model.label,
+  const { availableModels, selectedModel, setSelectedModel } = useModelContext();
+  const [dropdownValue, setDropdownValue] = useState<string | null>(selectedModel?.value || null);
+  const items = availableModels.map(model => ({
+    label: truncateModelName(model?.label),
     value: model.value,
     disabled: model.disabled
   }));
 
-  const handleChange = (itemValue: string | null) => {
+  const handleChange = async (itemValue: string | undefined) => {
     if (itemValue) {
-      const selectedModel = models.find(model => model.value === itemValue);
-      if (selectedModel) onSelectModel(selectedModel);
+      const newlySelectedModel = availableModels.find(model => model.value === itemValue);
+      if (newlySelectedModel) {
+        const newModelSelected = newlySelectedModel !== selectedModel
+        setSelectedModel(newlySelectedModel);
+        saveLastUsedModel(newlySelectedModel.value);
+        if (newModelSelected) {
+          setModelIsLoading(true);
+          await ensureLocalModelContext(newlySelectedModel);
+          setModelIsLoading(false);
+        }
+      }
     }
   };
+
+  if (!availableModels.filter(model => !model.disabled).length) {
+    return <ModelPickerPlaceholder />
+  }
 
   return (
     <DropDownPicker
@@ -77,11 +90,21 @@ export function ModelPicker({
       disabledItemContainerStyle={{ opacity: 0.5 }}
       disabledItemLabelStyle={{ opacity: 0.5 }}
       open={open}
-      value={value}
+      value={dropdownValue}
       items={items}
       setOpen={setOpen}
-      setValue={setValue}
-      onChangeValue={handleChange}
+      setValue={setDropdownValue}
+      onSelectItem={(item) => handleChange(item.value)}
     />
   );
 } 
+
+function ModelPickerPlaceholder() {
+  // Placeholder we display when no models are available
+  return (
+    <XStack padding="$3" alignItems="center" justifyContent="center" flex={1}>
+      <Text color="$gray10" fontSize={12}>Add models to get started</Text>
+      <ChevronRight size={14} color="$gray10" />
+    </XStack>
+  )
+}
