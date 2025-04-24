@@ -12,7 +12,6 @@ interface LogChatCompletionDiagnosticsParams {
 
 export async function logChatCompletionDiagnostics({llm_model, tokens_per_second, time_to_first_token, generated_tokens, streaming}: LogChatCompletionDiagnosticsParams): Promise<void> {
     getDeviceId().then(async (deviceId) => {
-        console.log('deviceId', deviceId);
         if (deviceId) {
             await supabase.from('chat_completion_diagnostics').insert({
                 device_id: deviceId,

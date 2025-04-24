@@ -1,7 +1,7 @@
-import { YStack, Button, Text, XStack, Slider, Tabs } from 'tamagui'
+import { YStack, Button, Text, XStack, Slider, Tabs, Input, Progress } from 'tamagui'
 import { Modal, View, TouchableWithoutFeedback, Animated, ScrollView, Alert } from 'react-native'
 import { useEffect, useRef, useState } from 'react'
-import { Check, Trash } from '@tamagui/lucide-icons'
+import { Check, Download, Trash } from '@tamagui/lucide-icons'
 import { deleteApiKey, removeLocalModel } from '@/services/storage'
 import { downloadModel, validateModelUrl } from '@/utils/modelUtils'
 import { useModelContext } from '@/contexts/modelContext'
@@ -9,7 +9,6 @@ import { ApiKeyDialog } from './ApiKeyDialog'
 import { Provider } from '@/services/models'
 import { extractModelNameFromUrl } from '@/utils/modelUtils'
 import { ModelListItem } from './ui/settings/ModelListItem'
-import { ModelUrlField } from './ui/settings/ModelUrlField'
 
 // Recommended model for first-time users
 const RECOMMENDED_MODELS = [
@@ -48,7 +47,7 @@ export function SettingsSheet({
   onOpenChange,
 }: SettingsSheetProps) {
   // Model URL input state
-  const { availableModels, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey, tokenGenerationLimit, setTokenGenerationLimit } = useModelContext();
+  const { availableModels, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey, tokenGenerationLimit, setTokenGenerationLimit, selectedModel, setSelectedModel } = useModelContext();
   const [modelUrl, setModelUrl] = useState('');
   const [downloadInProgress, setDownloadInProgress] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
@@ -148,6 +147,7 @@ export function SettingsSheet({
           text: "Delete",
           style: "destructive",
           onPress: async () => {
+            if (modelValue === selectedModel?.value) {setSelectedModel(null);}
             await removeLocalModel(modelValue).then(() => refreshModels());
           }
         }
@@ -268,7 +268,7 @@ export function SettingsSheet({
                     downloaded={availableModels.some(localModel => localModel.value === extractModelNameFromUrl(model.url))}
                     downloadInProgress={downloadInProgress}
                     onDownloadClick={() => handleModelDownload(model.url)}
-                    onDeleteClick={() => handleDeleteModel(model.url)}
+                    onDeleteClick={() => handleDeleteModel(extractModelNameFromUrl(model.url) || '')}
                   />
                 ))}
 
@@ -285,7 +285,7 @@ export function SettingsSheet({
                       downloaded={false}
                       downloadInProgress={downloadInProgress}
                       onDownloadClick={() => handleModelDownload(model.url)}
-                      onDeleteClick={() => handleDeleteModel(model.url)}
+                      onDeleteClick={() => handleDeleteModel(extractModelNameFromUrl(model.url) || '')}
                     />
                   ))} 
                   
@@ -301,15 +301,28 @@ export function SettingsSheet({
                     />
                   ))}
 
-                  <ModelUrlField
-                    downloadInProgress={downloadInProgress}
-                    downloadProgress={downloadProgress}
-                    modelUrl={modelUrl}
-                    setModelUrl={setModelUrl}
-                    errorMessage={errorMessage}
-                    setErrorMessage={setErrorMessage}
-                    handleModelDownload={handleModelDownload}
-                  />
+                    <XStack alignItems="center">
+                        <Input 
+                          flex={1}
+                          size="$4"
+                          placeholder="Custom HuggingFace GGUF URL" 
+                          value={modelUrl}
+                          opacity={downloadInProgress ? 0.6 : 1}
+                          disabled={downloadInProgress}
+                          onChangeText={text => {
+                              setModelUrl(text);
+                              setErrorMessage('');
+                          }}
+                        />
+                        <Button
+                          marginLeft={8}
+                          size="$4"
+                          icon={Download}
+                          onPress={() => handleModelDownload()}
+                          disabled={!modelUrl.trim() || downloadInProgress}
+                          opacity={downloadInProgress ? 0.6 : 1}
+                        />
+                    </XStack>
 
                 </ScrollView>
 
@@ -355,6 +368,19 @@ export function SettingsSheet({
               </ScrollView>
               </Tabs.Content>
             </Tabs>
+
+            <View style={{ flex: 1 }} />
+
+            {downloadInProgress && (
+              <YStack gap="$2" paddingBottom='$8'>
+                  <Text fontSize={12} textAlign="center">
+                      Downloading model... {Math.round(downloadProgress)}%
+                  </Text>
+                  <Progress value={downloadProgress} max={100} width="100%" height={8}>
+                      <Progress.Indicator animation="bouncy" backgroundColor="$green10" />
+                  </Progress>
+              </YStack>
+            )}
 
           </YStack>
 

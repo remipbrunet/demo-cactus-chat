@@ -24,7 +24,7 @@ export const ModelListItem: React.FC<ModelListItemProps> = ({
 }) => {
 
   return (
-    <XStack key={modelName} alignItems="center" marginBottom={8} opacity={!downloaded && downloadInProgress ? 0.5 : 1}>
+    <XStack key={modelName} alignItems="center" marginBottom={8}>
       {/* Model Name Display Button */}
       <Button
         flex={1}

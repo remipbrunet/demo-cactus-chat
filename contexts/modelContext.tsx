@@ -1,6 +1,6 @@
 import { createContext, useEffect, useState, useContext } from 'react';
 import { Model, refreshModelAvailability, isOpenAIAvailable, isAnthropicAvailable, isGeminiAvailable } from '@/services/models';
-import { saveTokenGenerationLimit, getTokenGenerationLimit } from '@/services/storage';
+import { saveTokenGenerationLimit, getTokenGenerationLimit, getLastUsedModel } from '@/services/storage';
 
 interface ModelContextType {
     availableModels: Model[];
@@ -43,10 +43,12 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
     getTokenGenerationLimit().then((limit) => {
       setTokenGenerationLimit(limit);
     });
-    const enabledModels = availableModels.filter(model => !model.disabled);
-    if (!selectedModel && enabledModels.length === 1) {
-      setSelectedModel(enabledModels[0]);
-    }
+    refreshModelAvailability().then((models) => {
+      setAvailableModels(models);
+      getLastUsedModel().then((model) => {
+        setSelectedModel(availableModels.find(m => m.value === model) || null);
+      });
+    });
   }, []);
 
   useEffect(() => {
