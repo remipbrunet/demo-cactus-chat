@@ -1,4 +1,5 @@
-import { initLlama, LlamaContext } from 'llama.rn';
+// import { initLlama, LlamaContext } from 'llama.rn';
+import { initLlama, LlamaContext } from 'cactus-rn-2'
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { Model } from '@/services/models';
