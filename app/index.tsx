@@ -8,6 +8,7 @@ import { ModelPicker } from '../components/ModelPicker';
 import { ConversationSidebar } from '../components/ConversationSidebar';
 import { SettingsSheet } from '../components/SettingsSheet';
 import { sendChatMessage, generateUniqueId } from '@/services/chat/chat';
+import { PanGestureHandler, PanGestureHandlerGestureEvent, State, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { 
   Conversation, 
   saveConversation, 
@@ -74,6 +75,27 @@ export default function ChatScreen() {
     
     loadInitialState();
   }, [conversationId]);
+
+  const handleGesture = (event: PanGestureHandlerGestureEvent) => {
+    if (event.nativeEvent.state === State.ACTIVE) { // Gesture has just ended
+      const { absoluteX, translationX, x } = event.nativeEvent;
+      // 'x' is the touch position relative to the PanGestureHandler view.
+      // If PanGestureHandler covers the whole screen area where swipe can start, 'x' can be used.
+      // Let's assume 'x' is the starting x-coordinate of the gesture within the handler.
+      // We need to ensure our PanGestureHandler's active area makes sense for 'x'.
+      // A simpler check might be if the initial touch was on the far left.
+      // This part can be tricky; let's refine.
+  
+      // A common pattern is to store the initial touch position in onBegan/onStart
+      // For simplicity now, let's assume we can determine if the start was at the edge.
+      // If your PanGestureHandler view starts at x=0 of the screen:
+      const gestureStartX = x - translationX; // Approximate start position relative to the handler
+  
+      if (gestureStartX < 40 && translationX > 50) {
+        setSidebarOpen(true);
+      }
+    }
+  };
 
   // Save conversation when messages change
   const saveCurrentConversation = async (currentMessages: Message[]) => {
@@ -199,78 +221,85 @@ export default function ChatScreen() {
         onNewConversation={createNewConversation}
         zIndex={1000}
       />
+
+      <GestureHandlerRootView>
+
+        <PanGestureHandler onHandlerStateChange={handleGesture}>
       
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-      >
-        <YStack flex={1} paddingHorizontal={16}>
-          <XStack 
-            alignItems="center" 
-            marginBottom={16} 
-            marginTop={4}
-            justifyContent="space-between"
-          >
-            <Button 
-              icon={Menu} 
-              size="$2" 
-              chromeless 
-              onPress={() => {
-                if (open) setOpen(false);
-                setSidebarOpen(true);
-              }}
-            />
-            <ModelPicker
-              open={open}
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
+          <YStack flex={1} paddingHorizontal={16}>
+            <XStack 
+              alignItems="center" 
+              marginBottom={16} 
+              marginTop={4}
+              justifyContent="space-between"
+            >
+              <Button 
+                icon={Menu} 
+                size="$2" 
+                chromeless 
+                onPress={() => {
+                  if (open) setOpen(false);
+                  setSidebarOpen(true);
+                }}
+              />
+              <ModelPicker
+                open={open}
+                modelIsLoading={modelIsLoading}
+                setModelIsLoading={setModelIsLoading}
+                setOpen={setOpen}
+                zIndex={50}
+              />
+              <Button 
+                icon={Settings} 
+                size="$2" 
+                chromeless 
+                onPress={() => setSettingsOpen(true)}
+              />
+            </XStack>
+            <ScrollView 
+              ref={scrollViewRef}
+              flex={1} 
+              bounces={false}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {([...messages, ...(currentAIMessage ? [{
+                id: generateUniqueId(),
+                isUser: false,
+                text: currentAIMessage,
+                model: selectedModel
+              } as Message] : [])]).map(message => (
+                <ChatMessage key={message.id} message={message} />
+              ))}
+            </ScrollView>
+            <MessageInput 
+              sendMessage={sendMessage}
+              isStreaming={isStreaming}
               modelIsLoading={modelIsLoading}
-              setModelIsLoading={setModelIsLoading}
-              setOpen={setOpen}
-              zIndex={50}
+              selectedModel={selectedModel}
+              setVoiceMode={setVoiceMode}
             />
-            <Button 
-              icon={Settings} 
-              size="$2" 
-              chromeless 
-              onPress={() => setSettingsOpen(true)}
-            />
-          </XStack>
-          <ScrollView 
-            ref={scrollViewRef}
-            flex={1} 
-            bounces={false}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {([...messages, ...(currentAIMessage ? [{
-              id: generateUniqueId(),
-              isUser: false,
-              text: currentAIMessage,
-              model: selectedModel
-            } as Message] : [])]).map(message => (
-              <ChatMessage key={message.id} message={message} />
-            ))}
-          </ScrollView>
-          <MessageInput 
-            sendMessage={sendMessage}
-            isStreaming={isStreaming}
-            modelIsLoading={modelIsLoading}
-            selectedModel={selectedModel}
-            setVoiceMode={setVoiceMode}
-          />
-        </YStack>
-      </KeyboardAvoidingView>
+          </YStack>
+        </KeyboardAvoidingView>
+
+        </PanGestureHandler>
       
-      <SettingsSheet
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-      />
-      <VoiceModeOverlay
-        visible={voiceMode}
-        onClose={() => setVoiceMode(false)}
-        messages={messages}
-        setMessages={setMessages}
-      />
+        <SettingsSheet
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+        />
+        <VoiceModeOverlay
+          visible={voiceMode}
+          onClose={() => setVoiceMode(false)}
+          messages={messages}
+          setMessages={setMessages}
+        />
+      </GestureHandlerRootView>
     </SafeAreaView>
   );
 }
