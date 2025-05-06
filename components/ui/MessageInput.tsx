@@ -3,6 +3,7 @@ import { Send, Pause, Mic } from "@tamagui/lucide-icons";
 import { Model } from "@/services/models";
 import { useState, memo, useCallback } from "react";
 import { requestMicrophonePermission } from "@/utils/voiceFunctions";
+import { loadedContext } from "@/utils/localModelContext";
 
 // --- Define Props for the Extracted Button Component ---
 interface MessageInputButtonProps {
@@ -27,9 +28,9 @@ const MessageInputButton = memo(({
     setVoiceMode
 }: MessageInputButtonProps) => {
     // Conditional rendering based on props
-    // if (isStreaming) {
-    //     return <Button icon={<Pause size="$1.5"/>} onPress={onPausePress} aria-label="Pause Streaming" chromeless/>;
-    // }
+    if (isStreaming) {
+        return <Button icon={<Pause size="$1.5"/>} onPress={onPausePress} aria-label="Pause Streaming" chromeless/>;
+    }
 
     if (isStreaming ||modelIsLoading) {
         // Wrap Spinner in YStack for consistent layout within the parent's YStack
@@ -84,6 +85,7 @@ function MessageInputComponent({ sendMessage, isStreaming, modelIsLoading, selec
 
     const handlePause = useCallback(() => {
         console.log('pause!')
+        loadedContext.context?.stopCompletion();
     }, [])
 
     return (

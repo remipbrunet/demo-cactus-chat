@@ -11,7 +11,7 @@ interface LoadedContext {
     modelValue: string
 }
 
-let loadedContext: LoadedContext = {
+export let loadedContext: LoadedContext = {
     context: null,
     modelValue: ''
 };
