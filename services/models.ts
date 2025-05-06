@@ -1,5 +1,6 @@
 import { getApiKey, getLocalModels, getModelsAvailableToDownload, saveModelsAvailableToDownload } from './storage';
 import { supabase } from './supabase';
+import { getTotalMemory } from 'react-native-device-info';
 
 export type Provider = 'OpenAI' | 'Cactus' | 'Anthropic' | 'Google';
 
@@ -102,18 +103,20 @@ export async function fetchModelsAvailableToDownload(): Promise<ModelAvailableTo
       default: false,
     }
   ]
+  const availableMemory = await getTotalMemory() / (2**30)
   const {data, error} = await supabase.from('available_models').select('*')
   if (error || !data) {
     getModelsAvailableToDownload().then((models) => {
       return models || fallbackModels;
       });
     } else {
-      const modelsAvailableToDownload = data.map((model: any) => ({
+      const modelsAvailableToDownload = data.filter((model: any) => model.recommended_ram_gb || 0 <= availableMemory).map((model: any) => ({
         name: model.name,
         comment: model.comment,
         downloadUrl: model.download_url,
         default: model.is_default,
       }));
+      console.log(modelsAvailableToDownload)
       saveModelsAvailableToDownload(modelsAvailableToDownload);
       return modelsAvailableToDownload;
     }
