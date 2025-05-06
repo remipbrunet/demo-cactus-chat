@@ -1,5 +1,5 @@
 import { createContext, useEffect, useState, useContext } from 'react';
-import { Model, refreshModelAvailability, isOpenAIAvailable, isAnthropicAvailable, isGeminiAvailable } from '@/services/models';
+import { Model, refreshModelAvailability, isOpenAIAvailable, isAnthropicAvailable, isGeminiAvailable, fetchModelsAvailableToDownload, ModelAvailableToDownload } from '@/services/models';
 import { saveTokenGenerationLimit, getTokenGenerationLimit, getLastUsedModel } from '@/services/storage';
 
 interface ModelContextType {
@@ -12,6 +12,7 @@ interface ModelContextType {
     hasGeminiKey: boolean;
     tokenGenerationLimit: number;
     setTokenGenerationLimit: (limit: number) => void;
+    modelsAvailableToDownload: ModelAvailableToDownload[];
 }
 
 const ModelContext = createContext<ModelContextType>({
@@ -24,6 +25,7 @@ const ModelContext = createContext<ModelContextType>({
     hasGeminiKey: false,
     tokenGenerationLimit: 50,
     setTokenGenerationLimit: () => {},
+    modelsAvailableToDownload: [],
 });
 
 export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
@@ -34,6 +36,7 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   const [hasAnthropicKey, setHasAnthropicKey] = useState<boolean>(false);
   const [hasGeminiKey, setHasGeminiKey] = useState<boolean>(false);
   const [tokenGenerationLimit, setTokenGenerationLimit] = useState<number>(1000);
+  const [modelsAvailableToDownload, setModelsAvailableToDownload] = useState<ModelAvailableToDownload[]>([]);
 
   function refreshModels() {
     setModelsVersion(modelsVersion + 1);
@@ -48,6 +51,9 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
       getLastUsedModel().then((model) => {
         setSelectedModel(availableModels.find(m => m.value === model) || null);
       });
+    });
+    fetchModelsAvailableToDownload().then((models) => {
+      setModelsAvailableToDownload(models);
     });
   }, []);
 
@@ -71,7 +77,7 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   }, [modelsVersion])
 
   return (
-  <ModelContext.Provider value={{ availableModels, selectedModel, setSelectedModel, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey, tokenGenerationLimit, setTokenGenerationLimit }}>
+  <ModelContext.Provider value={{ availableModels, selectedModel, setSelectedModel, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey, tokenGenerationLimit, setTokenGenerationLimit, modelsAvailableToDownload }}>
     {children}
   </ModelContext.Provider>
   )

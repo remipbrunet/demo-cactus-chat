@@ -10,28 +10,6 @@ import { Provider } from '@/services/models'
 import { extractModelNameFromUrl } from '@/utils/modelUtils'
 import { ModelListItem } from './ui/settings/ModelListItem'
 
-// Recommended model for first-time users
-const RECOMMENDED_MODELS = [
-  {
-    url: "https://huggingface.co/unsloth/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q8_0.gguf",
-    name: "SmolLM 135M",
-    comment: "(fast but stupid)",
-    default: false,
-  },
-  {
-    url: "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q8_0.gguf",
-    name: "Qwen 1.5B",
-    comment: "(best quality)",
-    default: true,
-  },
-  {
-    url: "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q8_0.gguf",
-    name: "Gemma 3 1B",
-    comment: "(faster, less intelligent)",
-    default: false,
-  }
-];
-
 interface SettingsSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -47,7 +25,7 @@ export function SettingsSheet({
   onOpenChange,
 }: SettingsSheetProps) {
   // Model URL input state
-  const { availableModels, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey, tokenGenerationLimit, setTokenGenerationLimit, selectedModel, setSelectedModel } = useModelContext();
+  const { availableModels, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey, tokenGenerationLimit, setTokenGenerationLimit, selectedModel, setSelectedModel, modelsAvailableToDownload } = useModelContext();
   const [modelUrl, setModelUrl] = useState('');
   const [downloadInProgress, setDownloadInProgress] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
@@ -251,7 +229,7 @@ export function SettingsSheet({
 
               <Tabs.Content value="general" paddingTop={16} gap="$4">
 
-                <Text fontSize={14} fontWeight="300" textAlign="center" marginBottom={16}>
+                <Text fontSize={14} fontWeight="300" textAlign="center">
                   Token generation limit: {tokenGenerationLimit}
                 </Text>
                 <Slider size="$1" width='100%' defaultValue={[tokenGenerationLimit]} max={2500} min={100} step={25} onValueChange={(value: number[]) => setTokenGenerationLimit(value[0])}>
@@ -261,14 +239,15 @@ export function SettingsSheet({
                     <Slider.Thumb circular index={0} />
                   </Slider>
 
-                {RECOMMENDED_MODELS.filter(model => model.default).map((model) => (
+                {modelsAvailableToDownload.filter(model => model.default).map((model) => (
                   <ModelListItem
-                    key={model.url}
-                    modelName={`Default model (${model.name})`}
-                    downloaded={availableModels.some(localModel => localModel.value === extractModelNameFromUrl(model.url))}
+                    key={model.downloadUrl}
+                    modelName={`Recommended model: ${model.name}`}
+                    modelComment={model.comment}
+                    downloaded={availableModels.some(localModel => localModel.value === extractModelNameFromUrl(model.downloadUrl))}
                     downloadInProgress={downloadInProgress}
-                    onDownloadClick={() => handleModelDownload(model.url)}
-                    onDeleteClick={() => handleDeleteModel(extractModelNameFromUrl(model.url) || '')}
+                    onDownloadClick={() => handleModelDownload(model.downloadUrl)}
+                    onDeleteClick={() => handleDeleteModel(extractModelNameFromUrl(model.downloadUrl) || '')}
                   />
                 ))}
 
@@ -278,14 +257,15 @@ export function SettingsSheet({
                 <ScrollView showsVerticalScrollIndicator={false}>
 
                   {/* recommended models section */}
-                  {RECOMMENDED_MODELS.filter(model => !availableModels.some(localModel => localModel.value === extractModelNameFromUrl(model.url))).map((model) => (
+                  {modelsAvailableToDownload.filter(model => !availableModels.some(localModel => localModel.value === extractModelNameFromUrl(model.downloadUrl))).map((model) => (
                     <ModelListItem
-                      key={model.url}
-                      modelName={`${model.name} ${model.comment}`}
+                      key={model.downloadUrl}
+                      modelName={`${model.name}`}
+                      modelComment={model.comment}
                       downloaded={false}
                       downloadInProgress={downloadInProgress}
-                      onDownloadClick={() => handleModelDownload(model.url)}
-                      onDeleteClick={() => handleDeleteModel(extractModelNameFromUrl(model.url) || '')}
+                      onDownloadClick={() => handleModelDownload(model.downloadUrl)}
+                      onDeleteClick={() => handleDeleteModel(extractModelNameFromUrl(model.downloadUrl) || '')}
                     />
                   ))} 
                   
@@ -294,6 +274,7 @@ export function SettingsSheet({
                     <ModelListItem
                       key={model.value}
                       modelName={model.value}
+                      modelComment={modelsAvailableToDownload.find(m => extractModelNameFromUrl(m.downloadUrl) === model.value)?.comment}
                       downloaded={true}
                       downloadInProgress={downloadInProgress}
                       onDownloadClick={() => handleModelDownload()}

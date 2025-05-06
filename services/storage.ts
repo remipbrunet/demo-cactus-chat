@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message } from '@/components/ui/ChatMessage';
-import { Model } from '@/services/models';
+import { Model, ModelAvailableToDownload } from '@/services/models';
 import * as FileSystem from 'expo-file-system';
 import { Provider } from '@/services/models';
 import { supabase } from '@/services/supabase';
@@ -12,6 +12,7 @@ const STORAGE_KEY = '@cactus_conversations';
 const LAST_MODEL_KEY = '@last_used_model';
 const DEVICE_ID_KEY = '@device_id';
 const TOKEN_GENERATION_LIMIT_KEY = '@token_generation_limit';
+const MODELS_AVAILABLE_TO_DOWNLOAD_KEY = '@models_available_to_download';
 
 export const getTokenGenerationLimit = async (): Promise<number> => {
   const limit = await AsyncStorage.getItem(TOKEN_GENERATION_LIMIT_KEY);
@@ -201,4 +202,13 @@ export const removeLocalModel = async (id: string) => {
     await FileSystem.deleteAsync(getFullModelPath(model.meta?.fileName || ''));
     await AsyncStorage.removeItem(`local_model_${id}`);
   }
+}
+
+export const getModelsAvailableToDownload = async (): Promise<ModelAvailableToDownload[]> => {
+  const data = await AsyncStorage.getItem(MODELS_AVAILABLE_TO_DOWNLOAD_KEY);
+  return data ? JSON.parse(data) : [];
+}
+
+export const saveModelsAvailableToDownload = async (models: ModelAvailableToDownload[]) => {
+  await AsyncStorage.setItem(MODELS_AVAILABLE_TO_DOWNLOAD_KEY, JSON.stringify(models));
 }
