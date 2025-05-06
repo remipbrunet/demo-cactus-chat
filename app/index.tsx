@@ -8,7 +8,7 @@ import { ModelPicker } from '../components/ModelPicker';
 import { ConversationSidebar } from '../components/ConversationSidebar';
 import { SettingsSheet } from '../components/SettingsSheet';
 import { sendChatMessage, generateUniqueId } from '@/services/chat/chat';
-import { PanGestureHandler, PanGestureHandlerGestureEvent, State, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { PanGestureHandler, PanGestureHandlerGestureEvent, State } from 'react-native-gesture-handler';
 import { 
   Conversation, 
   saveConversation, 
@@ -79,16 +79,6 @@ export default function ChatScreen() {
   const handleGesture = (event: PanGestureHandlerGestureEvent) => {
     if (event.nativeEvent.state === State.ACTIVE) { // Gesture has just ended
       const { absoluteX, translationX, x } = event.nativeEvent;
-      // 'x' is the touch position relative to the PanGestureHandler view.
-      // If PanGestureHandler covers the whole screen area where swipe can start, 'x' can be used.
-      // Let's assume 'x' is the starting x-coordinate of the gesture within the handler.
-      // We need to ensure our PanGestureHandler's active area makes sense for 'x'.
-      // A simpler check might be if the initial touch was on the far left.
-      // This part can be tricky; let's refine.
-  
-      // A common pattern is to store the initial touch position in onBegan/onStart
-      // For simplicity now, let's assume we can determine if the start was at the edge.
-      // If your PanGestureHandler view starts at x=0 of the screen:
       const gestureStartX = x - translationX; // Approximate start position relative to the handler
   
       if (gestureStartX < 40 && translationX > 50) {
@@ -222,7 +212,7 @@ export default function ChatScreen() {
         zIndex={1000}
       />
 
-      <GestureHandlerRootView>
+      {/* <GestureHandlerRootView> */}
 
         <PanGestureHandler onHandlerStateChange={handleGesture}>
       
@@ -299,7 +289,7 @@ export default function ChatScreen() {
           messages={messages}
           setMessages={setMessages}
         />
-      </GestureHandlerRootView>
+      {/* </GestureHandlerRootView> */}
     </SafeAreaView>
   );
 }
