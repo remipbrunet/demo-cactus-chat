@@ -2,6 +2,7 @@ import { Spinner, YStack, Button, Input, XStack, TextArea } from "tamagui"
 import { Send, Pause, Mic } from "@tamagui/lucide-icons";
 import { Model } from "@/services/models";
 import { useState, memo, useCallback } from "react";
+import { requestMicrophonePermission } from "@/utils/voiceFunctions";
 
 // --- Define Props for the Extracted Button Component ---
 interface MessageInputButtonProps {
@@ -39,7 +40,10 @@ const MessageInputButton = memo(({
         return (
             <Button 
                 icon={<Mic size="$1.5"/>} 
-                onPress={() => setVoiceMode(true)}
+                onPress={async () => {
+                    await requestMicrophonePermission((_) => {});
+                    setVoiceMode(true);
+                }}
                 disabled={isVoiceDisabled}
                 opacity={isVoiceDisabled ? 0.25 : 1} // Use the passed disabled prop
                 chromeless
