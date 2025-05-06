@@ -14,3 +14,7 @@ package-lock.json
 
 *.ipa
 *.apk
+
+.DS_Store
+yarn.lock
+devices.json
