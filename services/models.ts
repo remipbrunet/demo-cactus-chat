@@ -116,7 +116,6 @@ export async function fetchModelsAvailableToDownload(): Promise<ModelAvailableTo
         downloadUrl: model.download_url,
         default: model.is_default,
       }));
-      console.log(modelsAvailableToDownload)
       saveModelsAvailableToDownload(modelsAvailableToDownload);
       return modelsAvailableToDownload;
     }
