@@ -1,5 +1,5 @@
 // import { initLlama, LlamaContext } from 'llama.rn';
-import { initLlama, LlamaContext } from 'cactus-rn-2'
+import { initLlama, LlamaContext } from 'cactus-react-native'
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { Model } from '@/services/models';
@@ -11,7 +11,7 @@ interface LoadedContext {
     modelValue: string
 }
 
-let loadedContext: LoadedContext = {
+export let loadedContext: LoadedContext = {
     context: null,
     modelValue: ''
 };

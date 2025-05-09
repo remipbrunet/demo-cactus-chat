@@ -2,6 +2,8 @@ import { Spinner, YStack, Button, Input, XStack, TextArea } from "tamagui"
 import { Send, Pause, Mic } from "@tamagui/lucide-icons";
 import { Model } from "@/services/models";
 import { useState, memo, useCallback } from "react";
+import { requestMicrophonePermission } from "@/utils/voiceFunctions";
+import { loadedContext } from "@/utils/localModelContext";
 
 // --- Define Props for the Extracted Button Component ---
 interface MessageInputButtonProps {
@@ -26,9 +28,9 @@ const MessageInputButton = memo(({
     setVoiceMode
 }: MessageInputButtonProps) => {
     // Conditional rendering based on props
-    // if (isStreaming) {
-    //     return <Button icon={<Pause size="$1.5"/>} onPress={onPausePress} aria-label="Pause Streaming" chromeless/>;
-    // }
+    if (isStreaming) {
+        return <Button icon={<Pause size="$1.5"/>} onPress={onPausePress} aria-label="Pause Streaming" chromeless/>;
+    }
 
     if (isStreaming ||modelIsLoading) {
         // Wrap Spinner in YStack for consistent layout within the parent's YStack
@@ -39,7 +41,10 @@ const MessageInputButton = memo(({
         return (
             <Button 
                 icon={<Mic size="$1.5"/>} 
-                onPress={() => setVoiceMode(true)}
+                onPress={async () => {
+                    await requestMicrophonePermission((_) => {});
+                    setVoiceMode(true);
+                }}
                 disabled={isVoiceDisabled}
                 opacity={isVoiceDisabled ? 0.25 : 1} // Use the passed disabled prop
                 chromeless
@@ -80,6 +85,7 @@ function MessageInputComponent({ sendMessage, isStreaming, modelIsLoading, selec
 
     const handlePause = useCallback(() => {
         console.log('pause!')
+        loadedContext.context?.stopCompletion();
     }, [])
 
     return (

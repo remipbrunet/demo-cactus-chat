@@ -1,10 +1,11 @@
 import React from 'react';
-import { Button, XStack } from 'tamagui'; // Assuming Text is needed if Button content isn't enough
+import { Button, XStack, YStack, Text, Paragraph } from 'tamagui'; // Assuming Text is needed if Button content isn't enough
 import { Check, Download, Trash } from '@tamagui/lucide-icons'; // Assuming icon imports
 
 // Define the props for the component
 interface ModelListItemProps {
   modelName: string;
+  modelComment?: string;
   downloaded: boolean;
   downloadInProgress: boolean;
   onDownloadClick: () => void;
@@ -17,6 +18,7 @@ interface ModelListItemProps {
  */
 export const ModelListItem: React.FC<ModelListItemProps> = ({
   modelName,
+  modelComment,
   downloaded,
   downloadInProgress,
   onDownloadClick,
@@ -24,23 +26,24 @@ export const ModelListItem: React.FC<ModelListItemProps> = ({
 }) => {
 
   return (
-    <XStack key={modelName} alignItems="center" marginBottom={8}>
-      {/* Model Name Display Button */}
-      <Button
-        flex={1}
-        size="$4"
-        icon={downloaded ? Check : undefined} // Show checkmark if downloaded
-        disabled // Keep it always disabled for display purposes as per original code
-        opacity={0.5} // Consistent opacity
-      >
-        {modelName}
-      </Button>
+    <XStack key={modelName} alignItems="center" marginBottom="$3" marginLeft="$1">
+      <YStack flex={1} marginRight="$2">
+        <XStack alignItems="center">
+          <Text fontSize="$3" fontWeight="400" color="$color">
+            {modelName}
+          </Text>
+        </XStack>
+        {modelComment && (
+          <Text fontSize="$3" fontWeight="300" color="$gray10" marginTop="$0.5">
+            {modelComment}
+          </Text>
+        )}
+      </YStack>
 
       {/* Action Button: Download or Delete */}
       {downloaded ? (
         // Delete Button
         <Button
-          marginLeft={8}
           size="$4"
           theme="red"
           icon={Trash}
@@ -50,7 +53,6 @@ export const ModelListItem: React.FC<ModelListItemProps> = ({
       ) : (
         // Download Button
         <Button
-          marginLeft={8}
           size="$4"
           icon={Download}
           onPress={() => onDownloadClick()}
