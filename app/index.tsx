@@ -21,7 +21,7 @@ import { useModelContext } from '@/contexts/modelContext';
 import { logChatCompletionDiagnostics } from '@/services/diagnostics';
 import { MessageInput } from '@/components/ui/MessageInput';
 import { Model } from '@/services/models';
-import { VoiceModeOverlay } from '@/components/VoiceModeScreen';
+// import { VoiceModeOverlay } from '@/components/VoiceModeScreen';
 
 export default function ChatScreen() {
   const [open, setOpen] = useState(false);
@@ -283,12 +283,12 @@ export default function ChatScreen() {
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
         />
-        <VoiceModeOverlay
+        {/* <VoiceModeOverlay
           visible={voiceMode}
           onClose={() => setVoiceMode(false)}
           messages={messages}
           setMessages={setMessages}
-        />
+        /> */}
       {/* </GestureHandlerRootView> */}
     </SafeAreaView>
   );

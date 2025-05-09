@@ -1,8 +1,8 @@
 import { Spinner, YStack, Button, Input, XStack, TextArea } from "tamagui"
-import { Send, Pause, Mic } from "@tamagui/lucide-icons";
+import { Send, Pause } from "@tamagui/lucide-icons";
 import { Model } from "@/services/models";
 import { useState, memo, useCallback } from "react";
-import { requestMicrophonePermission } from "@/utils/voiceFunctions";
+// import { requestMicrophonePermission } from "@/utils/voiceFunctions";
 import { loadedContext } from "@/utils/localModelContext";
 
 // --- Define Props for the Extracted Button Component ---
@@ -37,28 +37,13 @@ const MessageInputButton = memo(({
         return <Spinner size="small" />
     }
 
-    if (inputText.trim() === '') {
-        return (
-            <Button 
-                icon={<Mic size="$1.5"/>} 
-                onPress={async () => {
-                    await requestMicrophonePermission((_) => {});
-                    setVoiceMode(true);
-                }}
-                disabled={isVoiceDisabled}
-                opacity={isVoiceDisabled ? 0.25 : 1} // Use the passed disabled prop
-                chromeless
-            />
-        );
-    }
-
     // Default Send button
     return (
         <XStack alignItems="center" justifyContent="center" gap="$0">
             <Button
                 icon={<Send size="$1.5"/>}
                 onPress={onSendPress}
-                disabled={isSendDisabled}
+                disabled={isSendDisabled || inputText.trim() === ''}
                 opacity={isSendDisabled ? 0.25 : 1} // Use the passed disabled prop
                 aria-label="Send Message"
                 chromeless
