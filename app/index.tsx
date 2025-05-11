@@ -243,6 +243,7 @@ export default function ChatScreen() {
                 setModelIsLoading={setModelIsLoading}
                 setOpen={setOpen}
                 zIndex={50}
+                setSettingsOpen={setSettingsOpen}
               />
               <Button 
                 icon={Settings} 
