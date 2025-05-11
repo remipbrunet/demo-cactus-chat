@@ -79,7 +79,7 @@ export function ModelPicker({
   function ModelPickerPlaceholder() {
     // Placeholder we display when no models are available
     return (
-      <XStack padding="$3" alignItems="center" justifyContent="center" flex={1} onPress={() => setSettingsOpen(true)}>
+      <XStack padding="$3" alignItems="center" justifyContent="center" flex={1} hitSlop={5} onPress={() => setSettingsOpen(true)}>
         <Text color="$gray10" fontSize={12}>Add models to get started</Text>
         <ChevronRight size={14} color="$gray10" />
       </XStack>
