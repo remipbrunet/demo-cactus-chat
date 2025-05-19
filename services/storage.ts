@@ -13,6 +13,7 @@ const LAST_MODEL_KEY = '@last_used_model';
 const DEVICE_ID_KEY = '@device_id';
 const TOKEN_GENERATION_LIMIT_KEY = '@token_generation_limit';
 const MODELS_AVAILABLE_TO_DOWNLOAD_KEY = '@models_available_to_download';
+const LANGUAGE_PREFERENCE_KEY = '@language_preference';
 
 export const getTokenGenerationLimit = async (): Promise<number> => {
   const limit = await AsyncStorage.getItem(TOKEN_GENERATION_LIMIT_KEY);
@@ -211,4 +212,12 @@ export const getModelsAvailableToDownload = async (): Promise<ModelAvailableToDo
 
 export const saveModelsAvailableToDownload = async (models: ModelAvailableToDownload[]) => {
   await AsyncStorage.setItem(MODELS_AVAILABLE_TO_DOWNLOAD_KEY, JSON.stringify(models));
+}
+
+export const getLanguagePreference = async (): Promise<string | null> => {
+  return await AsyncStorage.getItem(LANGUAGE_PREFERENCE_KEY);
+}
+
+export const saveLanguagePreference = async (language: string) => {
+  await AsyncStorage.setItem(LANGUAGE_PREFERENCE_KEY, language);
 }

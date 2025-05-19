@@ -2,7 +2,7 @@ import { XStack, YStack, Button, ScrollView } from 'tamagui';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Menu, Settings, Send } from '@tamagui/lucide-icons';
+import { Menu, Settings } from '@tamagui/lucide-icons';
 import { ChatMessage, createUserMessage } from '../components/ui/ChatMessage';
 import { ModelPicker } from '../components/ModelPicker';
 import { ConversationSidebar } from '../components/ConversationSidebar';
@@ -250,6 +250,7 @@ export default function ChatScreen() {
                 size="$2" 
                 chromeless 
                 onPress={() => setSettingsOpen(true)}
+                // onPress={() => router.push('/languageSelectionScreen'
               />
             </XStack>
             <ScrollView 

@@ -7,6 +7,7 @@ import { useModelContext } from '@/contexts/modelContext';
 import { saveLastUsedModel } from '@/services/storage';
 import { ensureLocalModelContext } from '@/utils/localModelContext';
 import { Spinner, Text, XStack } from 'tamagui';
+import { useTranslation } from 'react-i18next';
 
 const dropdownStyles = {
   container: {
@@ -48,6 +49,7 @@ export function ModelPicker({
 }: ModelPickerProps) {
   const { availableModels, selectedModel, setSelectedModel } = useModelContext();
   const [dropdownValue, setDropdownValue] = useState<string | null>(selectedModel?.value || null);
+  const { t } = useTranslation();
   const items = availableModels.map(model => ({
     label: truncateModelName(model?.label),
     value: model.value,
@@ -80,7 +82,7 @@ export function ModelPicker({
     // Placeholder we display when no models are available
     return (
       <XStack padding="$3" alignItems="center" justifyContent="center" flex={1} hitSlop={5} onPress={() => setSettingsOpen(true)}>
-        <Text color="$gray10" fontSize={12}>Add models to get started</Text>
+        <Text color="$gray10" fontSize={12}>{t('emptyModelPicker')}</Text>
         <ChevronRight size={14} color="$gray10" />
       </XStack>
     )
@@ -92,7 +94,7 @@ export function ModelPicker({
 
   return (
     <DropDownPicker
-      placeholder="Select Model"
+      placeholder={t('selectModel')}
       placeholderStyle={dropdownStyles.text}
       style={dropdownStyles.picker}
       dropDownContainerStyle={dropdownStyles.itemContainer}

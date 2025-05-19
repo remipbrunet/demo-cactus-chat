@@ -2,6 +2,7 @@ import { XStack, YStack, Text, Button, ScrollView } from 'tamagui';
 import { Conversation } from '../services/storage';
 import { useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import {useTranslation} from 'react-i18next';
 import { Plus } from '@tamagui/lucide-icons';
 
 interface ConversationSidebarProps {
@@ -22,6 +23,7 @@ export function ConversationSidebar({
   zIndex = 100
 }: ConversationSidebarProps) {
   // Prevent scrolling of background content when sidebar is open
+  const {t} = useTranslation();
   useEffect(() => {
     return () => {}; // Cleanup effect
   }, [isOpen]);
@@ -69,7 +71,7 @@ export function ConversationSidebar({
         <SafeAreaView style={{ flex: 1 }}>
           <YStack flex={1} padding={16}>
             <XStack justifyContent="space-between" alignItems="center" marginBottom={16}>
-              <Text fontSize={18} fontWeight="600">Conversations</Text>
+              <Text fontSize={18} fontWeight="600">{t('conversations')}</Text>
               <Button
                 icon={Plus}
                 size="$2"
@@ -82,7 +84,7 @@ export function ConversationSidebar({
             </XStack>
             <ScrollView flex={1} showsVerticalScrollIndicator={false}>
               {conversations.length === 0 ? (
-                <Text color="$gray10" marginTop={8}>No conversations yet</Text>
+                <Text color="$gray10" marginTop={8}>{t('noConversationsYet')}</Text>
               ) : (
                 conversations.map((conversation) => (
                   <Button
