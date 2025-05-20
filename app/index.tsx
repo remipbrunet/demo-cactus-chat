@@ -3,7 +3,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Menu, Settings } from '@tamagui/lucide-icons';
-import { ChatMessage, createUserMessage } from '../components/ui/ChatMessage';
+import { ChatMessage, createUserMessage } from '../components/ui/chat/ChatMessage';
 import { ModelPicker } from '../components/ModelPicker';
 import { ConversationSidebar } from '../components/ConversationSidebar';
 import { SettingsSheet } from '../components/SettingsSheet';
@@ -16,10 +16,10 @@ import {
   getConversations,
 } from '../services/storage';
 import { ModelMetrics } from '@/utils/modelMetrics';
-import { Message } from '@/components/ui/ChatMessage';
+import { Message } from '@/components/ui/chat/ChatMessage';
 import { useModelContext } from '@/contexts/modelContext';
 import { logChatCompletionDiagnostics } from '@/services/diagnostics';
-import { MessageInput } from '@/components/ui/MessageInput';
+import { MessageInput } from '@/components/ui/chat/MessageInput';
 import { Model } from '@/services/models';
 import { VoiceModeOverlay } from '@/components/VoiceModeScreen';
 

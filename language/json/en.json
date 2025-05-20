@@ -1,5 +1,6 @@
 {
     "conversations": "Conversations",
     "selectModel": "Select Model",
-    "emptyModelPicker": "Add models to get started"
+    "emptyModelPicker": "Add models to get started",
+    "noConversationsYet": "No conversations yet"
 }

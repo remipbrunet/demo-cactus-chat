@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Message } from '@/components/ui/ChatMessage';
+import { Message } from '@/components/ui/chat/ChatMessage';
 import { Model, ModelAvailableToDownload } from '@/services/models';
 import * as FileSystem from 'expo-file-system';
 import { Provider } from '@/services/models';

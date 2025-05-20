@@ -1,4 +1,4 @@
-import { Message } from '@/components/ui/ChatMessage';
+import { Message } from '@/components/ui/chat/ChatMessage';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import { ensureLocalModelContext } from '@/utils/localModelContext';
 import { Model } from '../models';

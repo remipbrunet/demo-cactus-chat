@@ -17,16 +17,16 @@ export default function RootLayout() {
   useEffect(() => {
     async function prepareAndRedirect() {
       try {
-        i18n.changeLanguage('ru');
+        i18n.changeLanguage('en');
         const languagePreference = await getLanguagePreference();
         if (languagePreference) {
-          router.push('/languageSelectionScreen');
+          router.push('/functionalitySelectionScreen');
         } else {
-          router.push('/languageSelectionScreen');
+          router.push('/functionalitySelectionScreen');
         }
       } catch (e) {
         console.warn('Error during initial setup:', e);
-        router.push('/languageSelectionScreen');
+        router.push('/');
       } finally {
         SplashScreen.hideAsync();
       }

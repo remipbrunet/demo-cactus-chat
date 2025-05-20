@@ -1,8 +1,10 @@
-import { YStack, Button, Text, XStack, Avatar, Image } from 'tamagui';
-import { useCallback, useEffect } from 'react';
+import { YStack, Button, Text, XStack } from 'tamagui';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import i18next from 'i18next';
 import { saveLanguagePreference } from '@/services/storage';
+import { SafeAreaView } from 'react-native';
+import { CactusFunctionalityOption } from '@/components/ui/onboarding/CactusFunctionalityOption';
 
 interface Language {
   code: string;
@@ -11,69 +13,53 @@ interface Language {
   flag: string;
 }
 
+const languages: Language[] = [
+    { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' },
+    { code: 'ru', name: 'Russian', nativeName: 'Русский', flag: '🇷🇺' },
+];
+
 export function LanguageSelectionScreen() {
-  const zIndex = 1000;
   const router = useRouter();
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>(languages[0]);
 
   useEffect(() => {
     console.log(i18next.languages);
   }, []);
   
-  const languages: Language[] = [
-    { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' },
-    { code: 'ru', name: 'Russian', nativeName: 'Русский', flag: '🇷🇺' },
-  ];
-  
-  const changeLanguage = useCallback((languageCode: string) => {
-    i18next.changeLanguage(languageCode);
-    saveLanguagePreference(languageCode);
-    // router.back();
-    router.push('/functionalitySelectionScreen');
+  const onSelectLanguage = useCallback((language: Language) => {
+    i18next.changeLanguage(language.code);
+    saveLanguagePreference(language.code);
+    setSelectedLanguage(language);
   }, [router]);
 
-  return (
-    <YStack
-      fullscreen
-      key="language-selection-overlay"
-      backgroundColor="$background"
-      alignItems="center"
-      justifyContent="flex-start"
-      zIndex={zIndex}
-      gap="$10"
-    >
-      
-      <YStack width="80%" paddingTop="$10">
-        <Text textAlign="center" fontSize={18} fontWeight="bold">Select Your Language</Text>
-      </YStack>
+  const onContinue = () => {
+    router.push('/functionalitySelectionScreen');
+  }
 
-      <YStack
-        gap="$2"
-        alignItems="center"
-        width="90%"
-        padding="$1"
-      >
-        {languages.map((language) => (
-          <Button
-            key={language.code}
-            onPress={() => changeLanguage(language.code)}
-            width="100%"
-            height={50}
-            backgroundColor="$backgroundStrong"
-            borderRadius="$4"
-          >
-            <XStack flex={1} justifyContent="space-between" alignItems="center" paddingHorizontal="$3">
-              <YStack>
-                <Text fontSize='$4'>{language.nativeName}</Text>
-                <Text fontSize='$3' color="$gray10">{language.name}</Text>
-              </YStack>
-              <YStack alignItems="center" justifyContent="center">
-                <Text fontSize='$8'>{language.flag}</Text>
-              </YStack>
-            </XStack>
-          </Button>
-        ))}
-      </YStack>
-    </YStack>
+  return (
+    <SafeAreaView style={{ flex: 1 }}>
+        <YStack flex={1} padding="$4" gap="$2" alignItems="center">
+            <YStack alignItems='center' gap="$2">
+                <Text fontSize="$5" fontWeight="600">Select your language</Text>
+            </YStack>
+            <YStack flex={1} alignItems="center" paddingTop="$4" gap="$2">
+                {languages.map((language) => (
+                    <CactusFunctionalityOption
+                        key={language.code}
+                        icon={language.flag}
+                        title={language.name}
+                        description={language.nativeName}
+                        selected={selectedLanguage.code === language.code}
+                        onPress={() => onSelectLanguage(language)}
+                        required={false}
+                    />
+                ))}
+            </YStack>
+            <Button width="100%" backgroundColor="#000" onPress={onContinue}>
+                <Text color="#FFF" fontSize="$4" fontWeight="400">Continue</Text>
+            </Button>
+        </YStack>
+    </SafeAreaView>
   );
 };
 

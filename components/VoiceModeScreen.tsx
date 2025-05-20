@@ -2,13 +2,13 @@ import { YStack, Button, Text } from 'tamagui';
 import { X, Mic } from '@tamagui/lucide-icons'; // Import the X icon
 import { useModelContext } from '../contexts/modelContext';
 import { sendChatMessage } from '../services/chat/chat';
-import { Message } from './ui/ChatMessage';
+import { Message } from './ui/chat/ChatMessage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { startRecognizing, stopRecognizing, removeEmojis } from '../utils/voiceFunctions';
 import Voice, { SpeechResultsEvent, SpeechEndEvent } from '@react-native-voice/voice';
 import Tts from 'react-native-tts'
 import { Model } from '@/services/models';
-import { createUserMessage, createAIMessage } from './ui/ChatMessage';
+import { createUserMessage, createAIMessage } from './ui/chat/ChatMessage';
 
 interface VoiceModeOverlayProps {
   visible: boolean;

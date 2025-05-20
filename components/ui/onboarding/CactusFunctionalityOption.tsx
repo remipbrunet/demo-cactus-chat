@@ -3,7 +3,7 @@ import { Text, XStack, YStack, Circle } from 'tamagui';
 import { Check} from '@tamagui/lucide-icons'
 
 export function CactusFunctionalityOption(props: {
-    icon: (props: IconProps) => JSX.Element;
+    icon: ((props: IconProps) => JSX.Element) | string; // string is the flag emoji
     title: string;
     description: string;
     selected: boolean;
@@ -15,6 +15,16 @@ export function CactusFunctionalityOption(props: {
     const iconBackgroundColor = props.selected ? "#000" : "$gray5";
     const iconContentColor = props.selected ? "#FFF" : "$gray10";
     const checkBackgroundColor = props.selected ? "#000" : "transparent";
+
+    const renderIcon = () => {
+        if (typeof props.icon === 'string') {
+          return <Text fontSize="$6" textAlign="center">{props.icon}</Text>;
+        } else {
+          const Icon = props.icon;
+          return <Icon size="$1.5" color={iconContentColor} />;
+        }
+      };
+
     return (
         <XStack 
             alignItems='center' 
@@ -26,8 +36,8 @@ export function CactusFunctionalityOption(props: {
             backgroundColor={tileBackgroundColor}
             onPress={props.required? () => {} : props.onPress}
         >
-            <Circle size="$4" backgroundColor={iconBackgroundColor}>
-                <props.icon size="$1.5" color={iconContentColor}/>
+            <Circle size="$4" backgroundColor={typeof props.icon === 'string' ? "transparent" : iconBackgroundColor}>
+                {renderIcon()}
             </Circle>
             <YStack flex={1} gap="$1">
                 <XStack alignItems='center' gap="$1">

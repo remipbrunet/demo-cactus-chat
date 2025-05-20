@@ -3,7 +3,8 @@ import { Text, YStack, Button } from 'tamagui';
 import { MessagesSquare, Mic, Image } from '@tamagui/lucide-icons'
 import type { IconProps } from "@tamagui/helpers-icon";
 import { useState } from 'react';
-import { CactusFunctionalityOption } from '../components/ui/CactusFunctionalityOption';
+import { CactusFunctionalityOption } from '@/components/ui/onboarding/CactusFunctionalityOption';
+import { router } from 'expo-router';
 
 interface CactusFunctionalitySelection {
     id: string;
@@ -12,7 +13,7 @@ interface CactusFunctionalitySelection {
     description: string;
     required: boolean;
     selected: boolean;
-    icon: (props: IconProps) => JSX.Element;
+    icon: (props: IconProps) => JSX.Element
     downloadSize: number;
 }
 
@@ -53,7 +54,8 @@ export default function FunctionalitySelectionScreen() {
     const [functionalitySelections, setFunctionalitySelections] = useState<CactusFunctionalitySelection[]>(defaultFunctionalitySelections);
 
     const onContinue = () => {
-        //
+        console.log(`Downloading ${functionalitySelections.filter(s => s.selected).map(s => s.id).join(', ')}...`);
+        router.replace('/')
     }
 
     return (
@@ -61,7 +63,7 @@ export default function FunctionalitySelectionScreen() {
         <YStack flex={1} padding="$4" gap="$2" alignItems="center">
             <YStack alignItems='center' gap="$2">
                 <Text fontSize="$5" fontWeight="600">Choose functionality</Text>
-                <Text fontSize="$3" fontWeight="300">Select how you want to interact with Cactus</Text>
+                <Text fontSize="$3" fontWeight="300" textAlign='center'>Select how you want to interact with Cactus.</Text>
             </YStack>
             <YStack flex={1} alignItems='center' paddingTop="$4" gap="$2">
                 {functionalitySelections.map((selection) => (

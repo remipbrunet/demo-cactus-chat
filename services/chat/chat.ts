@@ -2,7 +2,7 @@ import { streamOpenAICompletion } from './openai';
 import { streamAnthropicCompletion } from './anthropic';
 import { streamGeminiCompletion } from './gemini';
 import { streamLlamaCompletion } from './llama-local';
-import { Message } from '@/components/ui/ChatMessage';
+import { Message } from '@/components/ui/chat/ChatMessage';
 import { Model } from '../models';
 import { ModelMetrics } from '@/utils/modelMetrics';
 
