@@ -1,14 +1,14 @@
-import { SafeAreaView } from 'react-native';
+import { useState } from 'react';
+import { router } from 'expo-router';
 import { Text, YStack, Button } from 'tamagui';
 import { MessagesSquare, Mic, Image } from '@tamagui/lucide-icons'
 import type { IconProps } from "@tamagui/helpers-icon";
-import { useState } from 'react';
 import { CactusFunctionalityOption } from '@/components/ui/onboarding/CactusFunctionalityOption';
-import { router } from 'expo-router';
+import OnboardingScreenLayout from '@/components/ui/onboarding/OnboardingScreenLayout';
 
-interface CactusFunctionalitySelection {
+export interface CactusFunctionalitySelection {
     id: string;
-    url: string;
+    urls: string[];
     title: string;
     description: string;
     required: boolean;
@@ -20,7 +20,10 @@ interface CactusFunctionalitySelection {
 const defaultFunctionalitySelections: CactusFunctionalitySelection[] = [
     {
         id: "chat",
-        url: "https://cactus.com/cactus-chat",
+        urls: [
+            "https://huggingface.co/mradermacher/tinyllama-15M-GGUF/resolve/main/tinyllama-15M.IQ4_XS.gguf", 
+            "https://huggingface.co/mradermacher/tinyllama-15M-GGUF/resolve/main/tinyllama-15M.Q2_K.gguf"
+        ],
         title: "Cactus Chat",
         description: "Chat with Cactus using text",
         required: true,
@@ -30,9 +33,9 @@ const defaultFunctionalitySelections: CactusFunctionalitySelection[] = [
     },
     {
         id: "voice",
-        url: "https://cactus.com/cactus-voice",
+        urls: ["https://cactus.com/cactus-voice"],
         title: "Cactus Voice",
-        description: "Speak to Cactus in voice mode",
+        description: "Speak to Cactus",
         required: false,
         selected: true,
         icon: Mic,
@@ -40,9 +43,9 @@ const defaultFunctionalitySelections: CactusFunctionalitySelection[] = [
     },
     {
         id: "media",
-        url: "https://cactus.com/cactus-media",
+        urls: ["https://cactus.com/cactus-media"],
         title: "Cactus Media",
-        description: "Upload images or analyse live video",
+        description: "Analyse images or live video",
         required: false,
         selected: true,
         icon: Image,
@@ -55,15 +58,19 @@ export default function FunctionalitySelectionScreen() {
 
     const onContinue = () => {
         console.log(`Downloading ${functionalitySelections.filter(s => s.selected).map(s => s.id).join(', ')}...`);
-        router.replace('/')
+        router.push({
+            pathname: '/functionalityDownloadScreen',
+            params: {
+                functionalitySelectionsString: JSON.stringify(functionalitySelections.filter(s => s.selected))
+            }
+        });
     }
 
     return (
-    <SafeAreaView style={{ flex: 1 }}>
-        <YStack flex={1} padding="$4" gap="$2" alignItems="center">
+        <OnboardingScreenLayout>
             <YStack alignItems='center' gap="$2">
-                <Text fontSize="$5" fontWeight="600">Choose functionality</Text>
-                <Text fontSize="$3" fontWeight="300" textAlign='center'>Select how you want to interact with Cactus.</Text>
+                <Text fontSize="$5" fontWeight="600">Select functionality</Text>
+                <Text fontSize="$3" fontWeight="300" textAlign='center'>Choose how you want to interact with Cactus.</Text>
             </YStack>
             <YStack flex={1} alignItems='center' paddingTop="$4" gap="$2">
                 {functionalitySelections.map((selection) => (
@@ -82,7 +89,6 @@ export default function FunctionalitySelectionScreen() {
                 <Text color="#FFF" fontSize="$4" fontWeight="400">Continue</Text>
             </Button>
             <Text fontSize="$3" fontWeight="300">Download size: {functionalitySelections.filter(s => s.selected).reduce((acc, s) => acc + s.downloadSize, 0).toFixed(1)}GB</Text>
-        </YStack>
-    </SafeAreaView>
+        </OnboardingScreenLayout>
     );
 }

@@ -43,6 +43,7 @@ export default function RootLayout() {
             <Stack.Screen name="index" />
             <Stack.Screen name="languageSelectionScreen"/>
             <Stack.Screen name="functionalitySelectionScreen"/>
+            <Stack.Screen name="functionalityDownloadScreen"/>
           </Stack>
         </GestureHandlerRootView>
       </ModelProvider>
