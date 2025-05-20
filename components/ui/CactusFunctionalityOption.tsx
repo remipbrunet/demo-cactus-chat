@@ -1,0 +1,44 @@
+import type { IconProps } from "@tamagui/helpers-icon";
+import { Text, XStack, YStack, Circle } from 'tamagui';
+import { Check} from '@tamagui/lucide-icons'
+
+export function CactusFunctionalityOption(props: {
+    icon: (props: IconProps) => JSX.Element;
+    title: string;
+    description: string;
+    selected: boolean;
+    onPress: () => void;
+    required: boolean;
+}) {
+    const tileBorderColor = props.selected ? "#000" : "$gray8";
+    const tileBackgroundColor = props.selected ? "$gray5" : "transparent";
+    const iconBackgroundColor = props.selected ? "#000" : "$gray5";
+    const iconContentColor = props.selected ? "#FFF" : "$gray10";
+    const checkBackgroundColor = props.selected ? "#000" : "transparent";
+    return (
+        <XStack 
+            alignItems='center' 
+            gap="$4" 
+            padding="$4" 
+            borderWidth="$0.5" 
+            borderColor={tileBorderColor} 
+            borderRadius="$6"
+            backgroundColor={tileBackgroundColor}
+            onPress={props.required? () => {} : props.onPress}
+        >
+            <Circle size="$4" backgroundColor={iconBackgroundColor}>
+                <props.icon size="$1.5" color={iconContentColor}/>
+            </Circle>
+            <YStack flex={1} gap="$1">
+                <XStack alignItems='center' gap="$1">
+                    <Text fontSize="$4" fontWeight="500">{props.title}</Text>
+                    {props.required && <Text fontSize="$3" fontWeight="300">(required)</Text>}
+                </XStack>
+                <Text fontSize="$3" fontWeight="300">{props.description}</Text>
+            </YStack>
+            <Circle size="$2" borderWidth="$0.5" borderColor="$gray10" backgroundColor={checkBackgroundColor}>
+                {props.selected && <Check size="$1" color="#FFF"/>}
+            </Circle>
+        </XStack>
+    )
+}

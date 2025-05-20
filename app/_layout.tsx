@@ -20,7 +20,7 @@ export default function RootLayout() {
         i18n.changeLanguage('ru');
         const languagePreference = await getLanguagePreference();
         if (languagePreference) {
-          router.push('/');
+          router.push('/languageSelectionScreen');
         } else {
           router.push('/languageSelectionScreen');
         }
@@ -41,7 +41,8 @@ export default function RootLayout() {
         <GestureHandlerRootView style={{ flex: 1 }}>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
-            <Stack.Screen name="languageSelectionScreen" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="languageSelectionScreen"/>
+            <Stack.Screen name="functionalitySelectionScreen"/>
           </Stack>
         </GestureHandlerRootView>
       </ModelProvider>

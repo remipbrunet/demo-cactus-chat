@@ -27,7 +27,8 @@ export function LanguageSelectionScreen() {
   const changeLanguage = useCallback((languageCode: string) => {
     i18next.changeLanguage(languageCode);
     saveLanguagePreference(languageCode);
-    router.back();
+    // router.back();
+    router.push('/functionalitySelectionScreen');
   }, [router]);
 
   return (
