@@ -26,6 +26,7 @@ export default function RootLayout() {
         }else{
           router.push('/functionalitySelectionScreen');            
         }
+        i18n.changeLanguage('en')
         // const languagePreference = await getLanguagePreference();
         // if (languagePreference) {
         //   router.push('/functionalitySelectionScreen');

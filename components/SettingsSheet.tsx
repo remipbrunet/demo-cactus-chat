@@ -256,6 +256,29 @@ export function SettingsSheet({
               <Tabs.Content value="local" paddingTop={16}>
                 <ScrollView showsVerticalScrollIndicator={false}>
 
+                  <XStack alignItems="center" marginBottom="$3">
+                    <Input 
+                      flex={1}
+                      size="$4"
+                      placeholder="Custom HuggingFace GGUF URL" 
+                      value={modelUrl}
+                      opacity={downloadInProgress ? 0.6 : 1}
+                      disabled={downloadInProgress}
+                      onChangeText={text => {
+                          setModelUrl(text);
+                          setErrorMessage('');
+                      }}
+                    />
+                    <Button
+                      marginLeft={8}
+                      size="$4"
+                      icon={Download}
+                      onPress={() => handleModelDownload()}
+                      disabled={!modelUrl.trim() || downloadInProgress}
+                      opacity={downloadInProgress ? 0.6 : 1}
+                    />
+                  </XStack>
+
                   {/* recommended models section */}
                   {modelsAvailableToDownload.filter(model => !availableModels.some(localModel => localModel.value === extractModelNameFromUrl(model.downloadUrl))).map((model) => (
                     <ModelListItem
@@ -281,29 +304,6 @@ export function SettingsSheet({
                       onDeleteClick={() => handleDeleteModel(model.value)}
                     />
                   ))}
-
-                    <XStack alignItems="center">
-                        <Input 
-                          flex={1}
-                          size="$4"
-                          placeholder="Custom HuggingFace GGUF URL" 
-                          value={modelUrl}
-                          opacity={downloadInProgress ? 0.6 : 1}
-                          disabled={downloadInProgress}
-                          onChangeText={text => {
-                              setModelUrl(text);
-                              setErrorMessage('');
-                          }}
-                        />
-                        <Button
-                          marginLeft={8}
-                          size="$4"
-                          icon={Download}
-                          onPress={() => handleModelDownload()}
-                          disabled={!modelUrl.trim() || downloadInProgress}
-                          opacity={downloadInProgress ? 0.6 : 1}
-                        />
-                    </XStack>
 
                 </ScrollView>
 
