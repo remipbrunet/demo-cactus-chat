@@ -17,7 +17,7 @@ export default function FunctionalityDownloadScreen() {
     
     const allDownloads = functionalitySelections.flatMap(selection => selection.urls.map(url => ({
         url,
-        id: selection.id,
+        folderName: selection.folderName, // this is basically type: chat | media | voice
         filename: url.split('/').pop() || 'file'
         }))
     );
@@ -25,10 +25,11 @@ export default function FunctionalityDownloadScreen() {
     const totalDownloads = allDownloads.length;
 
     useEffect(() => {
+        console.log(FileSystem.documentDirectory)
         const downloadTasks: FileSystem.DownloadResumable[] = [];
         
-        allDownloads.forEach(async ({ url, filename, id }) => {
-            const dirPath = `${FileSystem.documentDirectory}${id}`;
+        allDownloads.forEach(async ({ url, filename, folderName }) => {
+            const dirPath = `${FileSystem.documentDirectory}${folderName}`;
             await FileSystem.makeDirectoryAsync(dirPath, { intermediates: true })
             const downloadPath = `${dirPath}/${filename}`;
           

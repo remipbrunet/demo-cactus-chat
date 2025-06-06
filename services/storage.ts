@@ -14,6 +14,7 @@ const DEVICE_ID_KEY = '@device_id';
 const TOKEN_GENERATION_LIMIT_KEY = '@token_generation_limit';
 const MODELS_AVAILABLE_TO_DOWNLOAD_KEY = '@models_available_to_download';
 const LANGUAGE_PREFERENCE_KEY = '@language_preference';
+const ONBOARDING_COMPLETE_FLAG_KEY = '@onboarding_complete_flag'
 
 export const getTokenGenerationLimit = async (): Promise<number> => {
   const limit = await AsyncStorage.getItem(TOKEN_GENERATION_LIMIT_KEY);
