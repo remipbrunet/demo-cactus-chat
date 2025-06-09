@@ -3,10 +3,10 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Menu, Settings } from '@tamagui/lucide-icons';
-import { ChatMessage, createUserMessage } from '../components/ui/chat/ChatMessage';
-import { ModelPicker } from '../components/ModelPicker';
-import { ConversationSidebar } from '../components/ConversationSidebar';
-import { SettingsSheet } from '../components/SettingsSheet';
+import { ChatMessage, createUserMessage } from '@/components/ui/chat/ChatMessage';
+import { ModelPicker } from '@/components/ui/chat/ModelPicker';
+import { ConversationSidebar } from '@/components/ui/chat/ConversationSidebar';
+import { SettingsSheet } from '@/components/SettingsSheet';
 import { sendChatMessage, generateUniqueId } from '@/services/chat/chat';
 import { PanGestureHandler, PanGestureHandlerGestureEvent, State } from 'react-native-gesture-handler';
 import { 
@@ -22,6 +22,7 @@ import { logChatCompletionDiagnostics } from '@/services/diagnostics';
 import { MessageInput } from '@/components/ui/chat/MessageInput';
 import { Model } from '@/services/models';
 import { VoiceModeOverlay } from '@/components/VoiceModeScreen';
+import { router } from 'expo-router';
 
 export default function ChatScreen() {
   const [open, setOpen] = useState(false);
@@ -212,8 +213,6 @@ export default function ChatScreen() {
         zIndex={1000}
       />
 
-      {/* <GestureHandlerRootView> */}
-
         <PanGestureHandler onHandlerStateChange={handleGesture}>
       
         <KeyboardAvoidingView 
@@ -239,18 +238,15 @@ export default function ChatScreen() {
               />
               <ModelPicker
                 open={open}
-                modelIsLoading={modelIsLoading}
                 setModelIsLoading={setModelIsLoading}
                 setOpen={setOpen}
                 zIndex={50}
-                setSettingsOpen={setSettingsOpen}
               />
               <Button 
                 icon={Settings} 
                 size="$2" 
                 chromeless 
-                onPress={() => setSettingsOpen(true)}
-                // onPress={() => router.push('/languageSelectionScreen'
+                onPress={() => router.push('/settingsScreen')}
               />
             </XStack>
             <ScrollView 

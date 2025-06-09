@@ -8,6 +8,8 @@ import { saveLastUsedModel } from '@/services/storage';
 import { ensureLocalModelContext } from '@/utils/localModelContext';
 import { Spinner, Text, XStack } from 'tamagui';
 import { useTranslation } from 'react-i18next';
+import { router } from 'expo-router';
+import { RegularText } from '../RegularText';
 
 const dropdownStyles = {
   container: {
@@ -32,20 +34,16 @@ const dropdownStyles = {
 
 interface ModelPickerProps {
   open: boolean;
-  modelIsLoading: boolean;
   setModelIsLoading: Dispatch<SetStateAction<boolean>>;
   setOpen: Dispatch<SetStateAction<boolean>>;
   zIndex?: number;
-  setSettingsOpen: Dispatch<SetStateAction<boolean>>;
 }
 
 export function ModelPicker({ 
   open, 
-  modelIsLoading,
   setModelIsLoading,
   setOpen, 
   zIndex = 50,
-  setSettingsOpen
 }: ModelPickerProps) {
   const { availableModels, selectedModel, setSelectedModel } = useModelContext();
   const [dropdownValue, setDropdownValue] = useState<string | null>(selectedModel?.value || null);
@@ -81,7 +79,7 @@ export function ModelPicker({
   function ModelPickerPlaceholder() {
     // Placeholder we display when no models are available
     return (
-      <XStack padding="$3" alignItems="center" justifyContent="center" flex={1} hitSlop={5} onPress={() => setSettingsOpen(true)}>
+      <XStack padding="$3" alignItems="center" justifyContent="center" flex={1} hitSlop={5} onPress={() => router.push('/settingsScreen')}>
         <Text color="$gray10" fontSize={12}>{t('emptyModelPicker')}</Text>
         <ChevronRight size={14} color="$gray10" />
       </XStack>
@@ -93,6 +91,7 @@ export function ModelPicker({
   }
 
   return (
+    // <RegularText fontSize="$4" fontWeight={400}>{selectedModel?.value}</RegularText>
     <DropDownPicker
       placeholder={t('selectModel')}
       placeholderStyle={dropdownStyles.text}

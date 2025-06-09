@@ -53,6 +53,7 @@ export default function RootLayout() {
             {/* <Stack.Screen name="languageSelectionScreen"/> */}
             <Stack.Screen name="functionalitySelectionScreen"/>
             <Stack.Screen name="functionalityDownloadScreen"/>
+            <Stack.Screen name="settingsScreen"/>
           </Stack>
         </GestureHandlerRootView>
       </ModelProvider>

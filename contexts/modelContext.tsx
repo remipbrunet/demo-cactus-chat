@@ -1,6 +1,22 @@
 import { createContext, useEffect, useState, useContext } from 'react';
-import { Model, refreshModelAvailability, isOpenAIAvailable, isAnthropicAvailable, isGeminiAvailable, fetchModelsAvailableToDownload, ModelAvailableToDownload } from '@/services/models';
-import { saveTokenGenerationLimit, getTokenGenerationLimit, getLastUsedModel } from '@/services/storage';
+import { 
+  Model, 
+  refreshModelAvailability, 
+  isOpenAIAvailable, 
+  isAnthropicAvailable, 
+  isGeminiAvailable, 
+  fetchModelsAvailableToDownload, 
+  ModelAvailableToDownload 
+} from '@/services/models';
+import { 
+  saveTokenGenerationLimit, 
+  getTokenGenerationLimit, 
+  getLastUsedModel, 
+  getInferenceHardware, 
+  saveInferenceHardware, 
+  getIsReasoningEnabled, 
+  saveIsReasoningEnabled 
+} from '@/services/storage';
 
 interface ModelContextType {
     availableModels: Model[];
@@ -12,6 +28,10 @@ interface ModelContextType {
     hasGeminiKey: boolean;
     tokenGenerationLimit: number;
     setTokenGenerationLimit: (limit: number) => void;
+    inferenceHardware: string[];
+    setInferenceHardware: (hardware: string[]) => void;
+    isReasoningEnabled: boolean;
+    setIsReasoningEnabled: (enabled: boolean) => void;
     modelsAvailableToDownload: ModelAvailableToDownload[];
 }
 
@@ -23,8 +43,12 @@ const ModelContext = createContext<ModelContextType>({
     hasOpenAIKey: false,
     hasAnthropicKey: false,
     hasGeminiKey: false,
-    tokenGenerationLimit: 50,
+    tokenGenerationLimit: 1000,
     setTokenGenerationLimit: () => {},
+    inferenceHardware: ['cpu'],
+    setInferenceHardware: () => {},
+    isReasoningEnabled: true,
+    setIsReasoningEnabled: () => {},
     modelsAvailableToDownload: [],
 });
 
@@ -36,6 +60,8 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   const [hasAnthropicKey, setHasAnthropicKey] = useState<boolean>(false);
   const [hasGeminiKey, setHasGeminiKey] = useState<boolean>(false);
   const [tokenGenerationLimit, setTokenGenerationLimit] = useState<number>(1000);
+  const [inferenceHardware, setInferenceHardware] = useState<string[]>(['cpu']);
+  const [isReasoningEnabled, setIsReasoningEnabled] = useState<boolean>(true);
   const [modelsAvailableToDownload, setModelsAvailableToDownload] = useState<ModelAvailableToDownload[]>([]);
 
   function refreshModels() {
@@ -46,6 +72,12 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
     getTokenGenerationLimit().then((limit) => {
       setTokenGenerationLimit(limit);
     });
+    getInferenceHardware().then((hardware) => {
+      setInferenceHardware(hardware)
+    });
+    getIsReasoningEnabled().then((enabled) => {
+      setIsReasoningEnabled(enabled)
+    })
     refreshModelAvailability().then((models) => {
       setAvailableModels(models);
       getLastUsedModel().then((model) => {
@@ -60,6 +92,14 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     saveTokenGenerationLimit(tokenGenerationLimit);
   }, [tokenGenerationLimit]);
+
+  useEffect(() => {
+    saveInferenceHardware(inferenceHardware)
+  }, [inferenceHardware])
+
+  useEffect(() => {
+    saveIsReasoningEnabled(isReasoningEnabled)
+  }, [isReasoningEnabled])
 
   useEffect(() => {
     refreshModelAvailability().then((models) => {
@@ -77,7 +117,7 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   }, [modelsVersion])
 
   return (
-  <ModelContext.Provider value={{ availableModels, selectedModel, setSelectedModel, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey, tokenGenerationLimit, setTokenGenerationLimit, modelsAvailableToDownload }}>
+  <ModelContext.Provider value={{ availableModels, selectedModel, setSelectedModel, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey, tokenGenerationLimit, setTokenGenerationLimit, inferenceHardware, setInferenceHardware, isReasoningEnabled, setIsReasoningEnabled, modelsAvailableToDownload }}>
     {children}
   </ModelContext.Provider>
   )

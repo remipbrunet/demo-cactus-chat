@@ -92,7 +92,7 @@ function MessageInputComponent({ sendMessage, isStreaming, modelIsLoading, selec
         <XStack 
             paddingVertical={16}
             borderWidth={1}
-            borderColor="$gray5"
+            borderColor="$black"
             borderRadius='$6'
             marginBottom='$2'
             padding="$2"

@@ -7,6 +7,8 @@ import { CactusFunctionalityOption } from '@/components/ui/onboarding/CactusFunc
 import OnboardingScreenLayout from '@/components/ui/onboarding/OnboardingScreenLayout';
 import { ActivityIndicator } from 'react-native';
 import { supabase } from '@/services/supabase';
+import { RegularText } from '@/components/ui/RegularText';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 export interface CactusFunctionalitySelection {
     id: string;
@@ -122,10 +124,10 @@ export default function FunctionalitySelectionScreen() {
 
     return (
         <OnboardingScreenLayout>
-            <YStack alignItems='center' gap="$2">
-                <Text fontSize="$5" fontWeight="600">Select functionality</Text>
-                <Text fontSize="$3" fontWeight="300" textAlign='center'>Choose how you want to interact with Cactus.</Text>
-            </YStack>
+            <PageHeader
+                title="Select functionality"
+                subtitle="Choose how you want to interact with Cactus."
+            />
             <YStack flex={1} alignItems='center' paddingTop="$4" gap="$2">
                 {functionalitySelections.map((selection) => (
                     <CactusFunctionalityOption
@@ -139,7 +141,7 @@ export default function FunctionalitySelectionScreen() {
                     />
                 ))}
                 <View marginTop="$4">
-                    <Text fontSize="$3" fontWeight="300" textAlign='center'>The Cactus framework also suports image, video, and audio! {'\n\n'} This functionality will be added to the app soon.</Text>
+                    <RegularText>The Cactus framework also suports image, video, and audio! {'\n\n'} This functionality will be added to the app soon.</RegularText>
                 </View>
             </YStack>
             <Button width="100%" backgroundColor="#000" onPress={onContinue} disabled={!remoteChoicesFetched}>
@@ -148,7 +150,7 @@ export default function FunctionalitySelectionScreen() {
                  : <ActivityIndicator/>
                 }
             </Button>
-            {remoteChoicesFetched && <Text fontSize="$3" fontWeight="300">Download size: {functionalitySelections.filter(s => s.selected).reduce((acc, s) => acc + s.downloadSize, 0).toFixed(2)}GB</Text>}
+            {remoteChoicesFetched && <RegularText>Download size: {functionalitySelections.filter(s => s.selected).reduce((acc, s) => acc + s.downloadSize, 0).toFixed(2)}GB</RegularText>}
         </OnboardingScreenLayout>
     );
 }

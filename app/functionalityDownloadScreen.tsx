@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CactusFunctionalitySelection } from './functionalitySelectionScreen';
 import * as FileSystem from 'expo-file-system';
 import { Check } from '@tamagui/lucide-icons';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 export default function FunctionalityDownloadScreen() {
     const { functionalitySelectionsString } = useLocalSearchParams()
@@ -69,10 +70,10 @@ export default function FunctionalityDownloadScreen() {
 
     return (
         <OnboardingScreenLayout>
-            <YStack alignItems='center' gap="$2">
-                <Text fontSize="$5" fontWeight="600">{isComplete ? 'Download complete' : 'Downloading models...'}</Text>
-                <Text fontSize="$3" fontWeight="300" textAlign='center'>Cactus stores and runs all your AI models locally.{'\n\n'}This means your data never leaves your device, ensuring complete privacy.</Text>
-            </YStack>
+            <PageHeader
+                title={isComplete ? 'Download complete' : 'Downloading models...'}
+                subtitle={`Cactus stores and runs all your AI models locally.\n\nThis means your data never leaves your device, ensuring complete privacy.`}
+            />
             <YStack flex={1} alignItems='center' justifyContent='center' marginBottom="$8" gap="$2">
                 {isComplete && <Check size="$12" color="black" />}
             </YStack>

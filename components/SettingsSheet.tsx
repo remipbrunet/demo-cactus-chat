@@ -1,14 +1,16 @@
-import { YStack, Button, Text, XStack, Slider, Tabs, Input, Progress } from 'tamagui'
+import { YStack, Button, Text, XStack, Slider, Tabs, Input, Progress, Switch } from 'tamagui'
 import { Modal, View, TouchableWithoutFeedback, Animated, ScrollView, Alert } from 'react-native'
 import { useEffect, useRef, useState } from 'react'
 import { Check, Download, Trash } from '@tamagui/lucide-icons'
 import { deleteApiKey, removeLocalModel } from '@/services/storage'
 import { downloadModel, validateModelUrl } from '@/utils/modelUtils'
 import { useModelContext } from '@/contexts/modelContext'
-import { ApiKeyDialog } from './ApiKeyDialog'
+import { ApiKeyDialog } from './ui/settings/ApiKeyDialog'
 import { Provider } from '@/services/models'
 import { extractModelNameFromUrl } from '@/utils/modelUtils'
 import { ModelListItem } from './ui/settings/ModelListItem'
+import { RegularText } from './ui/RegularText'
+import { PreferenceTile } from './ui/settings/PreferenceTile'
 
 interface SettingsSheetProps {
   open: boolean
@@ -227,29 +229,26 @@ export function SettingsSheet({
                 </Tabs.Tab>
               </Tabs.List>
 
-              <Tabs.Content value="general" paddingTop={16} gap="$4">
+              <Tabs.Content value="general" paddingTop={16}>
 
-                <Text fontSize={14} fontWeight="300" textAlign="center">
-                  Token generation limit: {tokenGenerationLimit}
-                </Text>
-                <Slider size="$1" width='100%' defaultValue={[tokenGenerationLimit]} max={2500} min={100} step={25} onValueChange={(value: number[]) => setTokenGenerationLimit(value[0])}>
-                  <Slider.Track>
+                <PreferenceTile>
+                  <RegularText textAlign='left'>Token generation limit: {tokenGenerationLimit}</RegularText>
+                  <Slider size="$1" flex={1} defaultValue={[tokenGenerationLimit]} max={2500} min={100} step={25} onValueChange={(value: number[]) => setTokenGenerationLimit(value[0])}>
+                    <Slider.Track>
                     <Slider.TrackActive />
                     </Slider.Track>
-                    <Slider.Thumb circular index={0} />
+                    <Slider.Thumb circular index={0}/>
                   </Slider>
+                </PreferenceTile>
 
-                {modelsAvailableToDownload.filter(model => model.default).map((model) => (
-                  <ModelListItem
-                    key={model.downloadUrl}
-                    modelName={`Recommended model: ${model.name}`}
-                    modelComment={model.comment}
-                    downloaded={availableModels.some(localModel => localModel.value === extractModelNameFromUrl(model.downloadUrl))}
-                    downloadInProgress={downloadInProgress}
-                    onDownloadClick={() => handleModelDownload(model.downloadUrl)}
-                    onDeleteClick={() => handleDeleteModel(extractModelNameFromUrl(model.downloadUrl) || '')}
-                  />
-                ))}
+                <PreferenceTile>
+                  <XStack flex={1}>
+                    <RegularText textAlign='left'>Inference hardware: </RegularText>
+                  </XStack>
+                  <Switch size="$4" defaultChecked={false}>
+                    <Switch.Thumb/>
+                  </Switch>
+                </PreferenceTile>
 
               </Tabs.Content>
             

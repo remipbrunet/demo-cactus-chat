@@ -12,9 +12,10 @@ const STORAGE_KEY = '@cactus_conversations';
 const LAST_MODEL_KEY = '@last_used_model';
 const DEVICE_ID_KEY = '@device_id';
 const TOKEN_GENERATION_LIMIT_KEY = '@token_generation_limit';
+const INFERENCE_HARDWARE_KEY = '@inference_hardware';
 const MODELS_AVAILABLE_TO_DOWNLOAD_KEY = '@models_available_to_download';
+const IS_REASONING_ENABLED_KEY = '@is_reasoning_enabled';
 const LANGUAGE_PREFERENCE_KEY = '@language_preference';
-const ONBOARDING_COMPLETE_FLAG_KEY = '@onboarding_complete_flag'
 
 export const getTokenGenerationLimit = async (): Promise<number> => {
   const limit = await AsyncStorage.getItem(TOKEN_GENERATION_LIMIT_KEY);
@@ -24,6 +25,25 @@ export const getTokenGenerationLimit = async (): Promise<number> => {
 export const saveTokenGenerationLimit = async (limit: number) => {
   await AsyncStorage.setItem(TOKEN_GENERATION_LIMIT_KEY, limit.toString());
 }
+
+export const getInferenceHardware = async (): Promise<string[]> => {
+  const hardware = await AsyncStorage.getItem(INFERENCE_HARDWARE_KEY);
+  return hardware ? JSON.parse(hardware) : ['cpu'];
+}
+
+export const saveInferenceHardware = async (hardware: string[]) => {
+  const jsonValue = JSON.stringify(hardware);
+  await AsyncStorage.setItem(INFERENCE_HARDWARE_KEY, jsonValue);
+}
+
+export const getIsReasoningEnabled = async (): Promise<boolean> => {
+  const enabled = await AsyncStorage.getItem(IS_REASONING_ENABLED_KEY);
+  return enabled ? enabled === 'true' : false
+}
+
+export const saveIsReasoningEnabled = async (enabled: boolean) => {
+  await AsyncStorage.setItem(IS_REASONING_ENABLED_KEY, enabled.toString());
+} 
 
 export const getModelDirectory = () => 
   Platform.OS === 'ios' 

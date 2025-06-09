@@ -1,6 +1,7 @@
 import type { IconProps } from "@tamagui/helpers-icon";
 import { Text, XStack, YStack, Circle } from 'tamagui';
 import { Check} from '@tamagui/lucide-icons'
+import { RegularText } from "../RegularText";
 
 export function CactusFunctionalityOption(props: {
     icon: ((props: IconProps) => JSX.Element) | string; // string is the flag emoji
@@ -43,9 +44,9 @@ export function CactusFunctionalityOption(props: {
             <YStack flex={1} gap="$1">
                 <XStack alignItems='center' gap="$1">
                     <Text fontSize="$4" fontWeight="500">{props.title}</Text>
-                    {props.required && <Text fontSize="$3" fontWeight="300">(default)</Text>}
+                    {props.required && <RegularText textAlign="left">(default)</RegularText>}
                 </XStack>
-                <Text fontSize="$3" fontWeight="300">{props.description}</Text>
+                <RegularText textAlign="left">{props.description}</RegularText>
             </YStack>
             <Circle size="$2" borderWidth="$0.5" borderColor={checkBorderColor} backgroundColor={checkBackgroundColor}>
                 {props.selected && <Check size="$1" color="#FFF"/>}
