@@ -1,12 +1,15 @@
-import { ScrollView, Slider, Text, XStack, YStack, ToggleGroup, Switch, Button, Input } from 'tamagui';
+import { ScrollView, Slider, Text, XStack, YStack, ToggleGroup, Switch, Button, Input, Progress } from 'tamagui';
 import { Zap, Cpu, Brain, HardDrive, Download } from '@tamagui/lucide-icons';
+import { useState } from 'react';
+import { Alert } from 'react-native';
 
 import OnboardingScreenLayout from '@/components/ui/onboarding/OnboardingScreenLayout';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { useModelContext } from '@/contexts/modelContext'
 import { RegularText } from '@/components/ui/RegularText';
-import { extractModelNameFromUrl } from '@/utils/modelUtils'
+import { downloadModel, extractModelNameFromUrl, validateModelUrl } from '@/utils/modelUtils'
 import { ModelListItem } from '@/components/ui/settings/ModelListItem'
+import { removeLocalModel } from '@/services/storage';
 
 interface TextWithIconProps {
     Icon: React.ElementType,
@@ -36,7 +39,74 @@ export default function SettingsScreen() {
         modelsAvailableToDownload,
         availableModels,
         selectedModel,
+        refreshModels
     } = useModelContext();
+    const [ downloadInProgress, setDownloadInProgress ] = useState(false);
+    const [ downloadProgress, setDownloadProgress ] = useState(0);
+    const [ errorMessage, setErrorMessage ] = useState('');
+    const [ modelUrl, setModelUrl ] = useState('');
+
+    const handleModelDownload = async (urlOverride?: string) => {
+        setErrorMessage('');
+
+        const urlToDownload = urlOverride || modelUrl;
+        
+        // Validate URL
+        const { valid, reason, contentLength } = await validateModelUrl(urlToDownload);
+        if (!valid) {
+            setErrorMessage(reason || 'Invalid URL');
+            return;
+        }
+
+        Alert.alert(
+            `Download ${extractModelNameFromUrl(urlToDownload)}`, 
+            `This will download ${contentLength ? (contentLength / 10e8).toFixed(2) + 'GB' : 'unknown size'} of data. We recommend doing this over WiFi.`,
+            [
+            {
+                text: "Cancel",
+                style: "cancel"
+            },
+            {
+                text: "Download",
+                style: "default",
+                onPress: async () => {
+                try {
+                    setDownloadInProgress(true);
+                    await downloadModel(urlToDownload, setDownloadProgress);
+                    setModelUrl('');
+                    refreshModels();
+                } catch (error: any) {
+                    setErrorMessage(error.message || 'Download failed');
+                } finally {
+                    setDownloadInProgress(false);
+                    setDownloadProgress(0);
+                }
+                }
+            }
+            ]
+        );
+    };
+
+    const handleDeleteModel = (modelValue: string) => {
+        Alert.alert(
+          `Delete ${modelValue}`, 
+          `Are you sure you want to delete this model? This cannot be undone. You will need to download the model again to use it.`,
+          [
+            {
+              text: "Cancel",
+              style: "cancel"
+            },
+            {
+              text: "Delete",
+              style: "destructive",
+              onPress: async () => {
+                // if (modelValue === selectedModel?.value) {setSelectedModel(null);}
+                await removeLocalModel(modelValue).then(() => refreshModels());
+              }
+            }
+          ]
+        );
+      };
 
     return (
         <OnboardingScreenLayout>
@@ -85,6 +155,16 @@ export default function SettingsScreen() {
                     </YStack>
                     <YStack gap="$2">
                         <TextWithIcon Icon={HardDrive} text="Local models"/>
+                        {downloadInProgress && (
+                            <YStack gap="$2" paddingBottom='$8'>
+                                <Text fontSize={12} textAlign="center">
+                                    Downloading model... {Math.round(downloadProgress)}%
+                                </Text>
+                                <Progress value={downloadProgress} max={100} width="100%" height={8}>
+                                    <Progress.Indicator animation="bouncy" backgroundColor="$green10" />
+                                </Progress>
+                            </YStack>
+                        )}
                         <YStack gap="$2">
                             {/* List of local models */}
                             {availableModels.filter(model => model.isLocal).map(model => (
@@ -95,7 +175,7 @@ export default function SettingsScreen() {
                                     downloaded={true}
                                     downloadInProgress={false}
                                     onDownloadClick={() => {}}
-                                    onDeleteClick={() => {}}
+                                    onDeleteClick={() => handleDeleteModel(model.value)}
                                     isSelected={selectedModel?.value === model.value}
                                 />
                             ))}
@@ -106,7 +186,7 @@ export default function SettingsScreen() {
                                     modelComment={model.comment}
                                     downloaded={false}
                                     downloadInProgress={false}
-                                    onDownloadClick={() => {}}
+                                    onDownloadClick={() => handleModelDownload(model.downloadUrl)}
                                     onDeleteClick={() => {}}
                                 />
                             ))} 
@@ -126,26 +206,26 @@ export default function SettingsScreen() {
                                     fontWeight={300}
                                     backgroundColor={"transparent"}
                                     borderWidth={0}
-                                    
-                                    // value={modelUrl}
-                                    // opacity={downloadInProgress ? 0.6 : 1}
-                                    // disabled={downloadInProgress}
-                                    // onChangeText={text => {
-                                    //     setModelUrl(text);
-                                    //     setErrorMessage('');
-                                    // }}
+                                    value={modelUrl}
+                                    opacity={downloadInProgress ? 0.6 : 1}
+                                    disabled={downloadInProgress}
+                                    onChangeText={text => {
+                                        setModelUrl(text);
+                                        setErrorMessage('');
+                                    }}
                                 />
                                 <Button
                                     size="$2"
                                     circular
                                     chromeless
                                     icon={<Download size="$1"/>}
-                                    marginHorizontal="$2.5"
-                                    // onPress={() => handleModelDownload()}
-                                    // disabled={!modelUrl.trim() || downloadInProgress}
-                                    // opacity={downloadInProgress ? 0.6 : 1}
+                                    marginHorizontal="$3"
+                                    onPress={() => handleModelDownload()}
+                                    disabled={!modelUrl.trim() || downloadInProgress}
+                                    opacity={downloadInProgress ? 0.6 : 1}
                                 />
-                        </XStack>
+                            </XStack>
+                            {errorMessage && <RegularText color="$red10">{errorMessage}</RegularText>}
                         </YStack>
                     </YStack>
                 </YStack>

@@ -191,22 +191,22 @@ export async function saveApiKey(provider: Provider, key: string): Promise<void>
   }
 }
 
-export async function getApiKey(provider: Provider): Promise<string | null> {
-  try {
-    return await AsyncStorage.getItem(fetchProviderKeyStoreName(provider));
-  } catch (error) {
-    console.error(`Error loading ${provider} key:`, error);
-    return null;
-  }
-}
+// export async function getApiKey(provider: Provider): Promise<string | null> {
+//   try {
+//     return await AsyncStorage.getItem(fetchProviderKeyStoreName(provider));
+//   } catch (error) {
+//     console.error(`Error loading ${provider} key:`, error);
+//     return null;
+//   }
+// }
 
-export async function deleteApiKey(provider: Provider): Promise<void> {
-  try {
-    await AsyncStorage.removeItem(fetchProviderKeyStoreName(provider));
-  } catch (error) {
-    console.error(`Error deleting ${provider} key:`, error);
-  }
-}
+// export async function deleteApiKey(provider: Provider): Promise<void> {
+//   try {
+//     await AsyncStorage.removeItem(fetchProviderKeyStoreName(provider));
+//   } catch (error) {
+//     console.error(`Error deleting ${provider} key:`, error);
+//   }
+// }
 
 export const storeLocalModel = (model: Model) => 
   AsyncStorage.setItem(`local_model_${model.value}`, JSON.stringify(model));
