@@ -30,7 +30,7 @@ export const ModelListItem: React.FC<ModelListItemProps> = ({
   onDeleteClick,
 }) => {
 
-  const { setSelectedModel, availableModels } = useModelContext()
+  const { setSelectedModel, availableModels, isContextLoading } = useModelContext()
 
   // Note: this is a REPULSIVE workaround to the fact that we're not passing in Model into here... DISGUSTING. FIX
   const downloadedModel = availableModels.find(model => model.label === modelName)
@@ -44,7 +44,7 @@ export const ModelListItem: React.FC<ModelListItemProps> = ({
       borderRadius='$4'
       paddingVertical="$2.5"
       paddingHorizontal="$3"
-      onPress={() => {downloadedModel ? setSelectedModel(downloadedModel) : onDownloadClick()}}
+      onPress={() => {downloadedModel && !isContextLoading ? setSelectedModel(downloadedModel) : onDownloadClick()}}
     >
       <YStack flex={1} marginRight="$2">
         <RegularText textAlign='left' fontWeight={400} color={downloaded ? "$black" : "$gray10"}>{modelName}</RegularText>

@@ -1,7 +1,8 @@
 import { Message } from '@/components/ui/chat/ChatMessage';
 import { ModelMetrics } from '@/utils/modelMetrics';
-import { ensureLocalModelContext } from '@/utils/localModelContext';
 import { Model, InferenceHardware } from '../models';
+import { LlamaContext } from 'cactus-react-native';
+import * as Haptics from 'expo-haptics';
 
 export interface ChatProgressCallback {
   (text: string): void;
@@ -12,6 +13,7 @@ export interface ChatCompleteCallback {
 }
 
 export async function streamLlamaCompletion(
+  context: LlamaContext | null,
   messages: Message[],
   model: Model,
   onProgress: ChatProgressCallback,
@@ -19,12 +21,10 @@ export async function streamLlamaCompletion(
   streaming: boolean = true,
   maxTokens: number,
   isReasoningEnabled: boolean,
-  inferenceHardware: InferenceHardware[],
   voiceMode?: boolean
 ) {
   try {
     console.log('Ensuring Llama context...', new Date().toISOString());
-    const context = await ensureLocalModelContext(model, inferenceHardware);
     if (!context) {
       throw new Error('Failed to initialize Llama context');
     }
@@ -69,6 +69,9 @@ export async function streamLlamaCompletion(
               modelMetrics.timeToFirstToken = firstTokenTime - startTime;
             }
             responseText += data.token;
+            if(!voiceMode) {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+            }
             onProgress(responseText);
           }
         }

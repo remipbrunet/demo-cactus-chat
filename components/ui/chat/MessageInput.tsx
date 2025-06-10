@@ -1,9 +1,9 @@
-import { Spinner, YStack, Button, Input, XStack, TextArea } from "tamagui"
+import { Spinner, YStack, Button, Input, XStack } from "tamagui"
 import { Send, Pause, Mic } from "@tamagui/lucide-icons";
 import { Model } from "@/services/models";
 import { useState, memo, useCallback } from "react";
 import { requestMicrophonePermission } from "@/utils/voiceFunctions";
-import { loadedContext } from "@/utils/localModelContext";
+import { useModelContext } from "@/contexts/modelContext";
 
 // --- Define Props for the Extracted Button Component ---
 interface MessageInputButtonProps {
@@ -70,13 +70,13 @@ const MessageInputButton = memo(({
 interface MessageInputProps {
     sendMessage: (input: string) => void;
     isStreaming: boolean;
-    modelIsLoading: boolean;
     selectedModel: Model | null;
     setVoiceMode: (voiceMode: boolean) => void;
 }
 
-function MessageInputComponent({ sendMessage, isStreaming, modelIsLoading, selectedModel, setVoiceMode }: MessageInputProps) {
+function MessageInputComponent({ sendMessage, isStreaming, selectedModel, setVoiceMode }: MessageInputProps) {
     const [ inputText, setInputText ] = useState<string>('')
+    const { isContextLoading, cactusContext } = useModelContext()
 
     const onSubmit = useCallback(() => {
         sendMessage(inputText)
@@ -85,7 +85,7 @@ function MessageInputComponent({ sendMessage, isStreaming, modelIsLoading, selec
 
     const handlePause = useCallback(() => {
         console.log('pause!')
-        loadedContext.context?.stopCompletion();
+        cactusContext.context?.stopCompletion();
     }, [])
 
     return (
@@ -113,7 +113,7 @@ function MessageInputComponent({ sendMessage, isStreaming, modelIsLoading, selec
                 <MessageInputButton 
                     inputText={inputText}
                     isStreaming={isStreaming}
-                    modelIsLoading={modelIsLoading}
+                    modelIsLoading={isContextLoading}
                     isSendDisabled={!selectedModel || inputText.trim() === ''}
                     isVoiceDisabled={!selectedModel || inputText.trim() !== ''}
                     onSendPress={onSubmit}

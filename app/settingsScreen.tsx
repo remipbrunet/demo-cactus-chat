@@ -151,12 +151,12 @@ export default function SettingsScreen() {
                                 <Switch.Thumb size="$4" backgroundColor='white' borderColor="black" borderWidth="$1"/>
                             </Switch>
                         </XStack>
-                        <RegularText>Reasoning yields slower, more thoughtful responses.</RegularText>
+                        <RegularText>Slower, more thoughtful responses from reasoning-enabled models.</RegularText>
                     </YStack>
                     <YStack gap="$2">
                         <TextWithIcon Icon={HardDrive} text="Local models"/>
                         {downloadInProgress && (
-                            <YStack gap="$2" paddingBottom='$8'>
+                            <YStack gap="$2" padding="$2">
                                 <Text fontSize={12} textAlign="center">
                                     Downloading model... {Math.round(downloadProgress)}%
                                 </Text>

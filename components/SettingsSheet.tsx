@@ -351,8 +351,8 @@ export function SettingsSheet({
 
             <View style={{ flex: 1 }} />
 
-            {downloadInProgress && (
-              <YStack gap="$2" paddingBottom='$8'>
+            {!downloadInProgress && (
+              <YStack gap="$2">
                   <Text fontSize={12} textAlign="center">
                       Downloading model... {Math.round(downloadProgress)}%
                   </Text>

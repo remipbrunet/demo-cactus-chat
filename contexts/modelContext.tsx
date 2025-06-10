@@ -1,4 +1,5 @@
 import { createContext, useEffect, useState, useContext } from 'react';
+import { Platform } from 'react-native';
 import { 
   Model, 
   InferenceHardware,
@@ -13,10 +14,22 @@ import {
   getInferenceHardware, 
   saveInferenceHardware, 
   getIsReasoningEnabled, 
-  saveIsReasoningEnabled
+  saveIsReasoningEnabled,
+  getFullModelPath
 } from '@/services/storage';
+import { initLlama, LlamaContext, releaseAllLlama } from 'cactus-react-native';
+import { logModelLoadDiagnostics } from '@/services/diagnostics';
+import { generateUniqueId } from '@/services/chat/llama-local';
+
+interface LoadedContext {
+  context: LlamaContext | null,
+  model: Model | null,
+  inferenceHardware: InferenceHardware[]
+}
 
 interface ModelContextType {
+    cactusContext: LoadedContext;
+    isContextLoading: boolean;
     availableModels: Model[];
     selectedModel: Model | null;
     setSelectedModel: (model: Model | null) => void;
@@ -27,10 +40,14 @@ interface ModelContextType {
     setInferenceHardware: (hardware: InferenceHardware[]) => void;
     isReasoningEnabled: boolean;
     setIsReasoningEnabled: (enabled: boolean) => void;
+    conversationId: string;
+    setConversationId: (id: string) => void;
     modelsAvailableToDownload: ModelAvailableToDownload[];
 }
 
 const ModelContext = createContext<ModelContextType>({
+    cactusContext: {context: null, model: null, inferenceHardware: []},
+    isContextLoading: false,
     availableModels: [],
     selectedModel: null,
     setSelectedModel: () => {},
@@ -41,6 +58,8 @@ const ModelContext = createContext<ModelContextType>({
     setInferenceHardware: () => {},
     isReasoningEnabled: true,
     setIsReasoningEnabled: () => {},
+    conversationId: generateUniqueId(),
+    setConversationId: () => {},
     modelsAvailableToDownload: [],
 });
 
@@ -50,7 +69,10 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   const [modelsVersion, setModelsVersion] = useState<number>(0);
   const [tokenGenerationLimit, setTokenGenerationLimit] = useState<number>(1000);
   const [inferenceHardware, setInferenceHardware] = useState<InferenceHardware[]>(['cpu']);
+  const [cactusContext, setCactusContext] = useState<LoadedContext>({context: null, model: null, inferenceHardware: []});
+  const [isContextLoading, setIsContextLoading] = useState<boolean>(false);
   const [isReasoningEnabled, setIsReasoningEnabled] = useState<boolean>(true);
+  const [conversationId, setConversationId] = useState<string>(generateUniqueId())
   const [modelsAvailableToDownload, setModelsAvailableToDownload] = useState<ModelAvailableToDownload[]>([]);
 
   function refreshModels() {
@@ -96,8 +118,38 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
     });
   }, [modelsVersion])
 
+  useEffect(() => {
+    const reloadModelContext = async () => {
+      if (selectedModel){
+        setIsContextLoading(true);
+        await releaseAllLlama();
+        const modelPath = getFullModelPath(selectedModel.meta?.fileName || '');
+        const gpuLayers = Platform.OS === 'ios' && inferenceHardware.includes('gpu') ? 99 : 0
+        const startTime = performance.now();
+        const context = await initLlama({
+          model: modelPath,
+          use_mlock: true,
+          n_ctx: 2048,
+          n_gpu_layers: gpuLayers
+        });
+        const endTime = performance.now();
+        logModelLoadDiagnostics({model: selectedModel.value, loadTime: endTime - startTime});
+        setCactusContext({
+          context: context,
+          model: selectedModel,
+          inferenceHardware: inferenceHardware
+        })
+        setIsContextLoading(false)
+      }
+    }
+    reloadModelContext()
+    console.log('reloading context!')
+  }, [selectedModel, inferenceHardware])
+
   return (
   <ModelContext.Provider value={{ 
+    cactusContext,
+    isContextLoading,
     availableModels, 
     selectedModel, 
     setSelectedModel, 
@@ -108,6 +160,8 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
     setInferenceHardware, 
     isReasoningEnabled, 
     setIsReasoningEnabled, 
+    conversationId,
+    setConversationId,
     modelsAvailableToDownload 
   }}>
     {children}

@@ -2,11 +2,10 @@ import { Stack } from 'expo-router';
 import { TamaguiProvider } from 'tamagui';
 import config from '../tamagui.config';
 import { ModelProvider } from '@/contexts/modelContext';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import '@/language/i18nextConfig'; // needed for language translation context
 import i18n from '@/language/i18nextConfig';
 import { useEffect } from 'react';
-import { getLanguagePreference } from '@/services/storage';
+// import { getLanguagePreference } from '@/services/storage';
 import { router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as FileSystem from 'expo-file-system';
@@ -47,15 +46,14 @@ export default function RootLayout() {
   return (
     <TamaguiProvider config={config}>
       <ModelProvider>
-        <GestureHandlerRootView style={{ flex: 1 }}>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
             {/* <Stack.Screen name="languageSelectionScreen"/> */}
             <Stack.Screen name="functionalitySelectionScreen"/>
             <Stack.Screen name="functionalityDownloadScreen"/>
             <Stack.Screen name="settingsScreen"/>
+            <Stack.Screen name="conversationsScreen" options={{ presentation: "formSheet", contentStyle: { flex: 1 } }}/>
           </Stack>
-        </GestureHandlerRootView>
       </ModelProvider>
     </TamaguiProvider>
   );

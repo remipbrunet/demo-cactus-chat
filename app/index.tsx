@@ -4,10 +4,8 @@ import { KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Menu, Settings } from '@tamagui/lucide-icons';
 import { ChatMessage, createUserMessage } from '@/components/ui/chat/ChatMessage';
-import { ModelPicker } from '@/components/ui/chat/ModelPicker';
-import { ConversationSidebar } from '@/components/ui/chat/ConversationSidebar';
+import { ModelDisplay } from '@/components/ui/chat/ModelDisplay';
 import { SettingsSheet } from '@/components/SettingsSheet';
-import { PanGestureHandler, PanGestureHandlerGestureEvent, State } from 'react-native-gesture-handler';
 import { 
   Conversation, 
   saveConversation, 
@@ -23,22 +21,23 @@ import { Model } from '@/services/models';
 import { VoiceModeOverlay } from '@/components/VoiceModeScreen';
 import { router } from 'expo-router';
 import { streamLlamaCompletion, generateUniqueId } from '@/services/chat/llama-local';
-import { ensureLocalModelContext } from '@/utils/localModelContext';
 
 export default function ChatScreen() {
-  const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentAIMessage, setCurrentAIMessage] = useState<string>('');
   const [isStreaming, setIsStreaming] = useState(false);
-  const [modelIsLoading, setModelIsLoading] = useState(false);
-  const [conversationId, setConversationId] = useState<string>(generateUniqueId());
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [allConversations, setAllConversations] = useState<Conversation[]>([]);
+  // const [allConversations, setAllConversations] = useState<Conversation[]>([]);
   const [voiceMode, setVoiceMode] = useState(false);
   
   const scrollViewRef = useRef<any>(null);
-  const { selectedModel, tokenGenerationLimit, inferenceHardware, isReasoningEnabled } = useModelContext();
+  const { 
+    selectedModel, 
+    tokenGenerationLimit, 
+    isReasoningEnabled, 
+    cactusContext, 
+    conversationId 
+  } = useModelContext();
   
   // Single ref for streaming updates
   const streamingUpdateRef = useRef<{
@@ -47,17 +46,17 @@ export default function ChatScreen() {
   }>({ text: '', frameId: null });
 
   // Load conversations list
-  useEffect(() => {
-    const loadConversations = async () => {
-      const conversations = await getConversations();
-      setAllConversations(conversations);
-    };
+  // useEffect(() => {
+  //   const loadConversations = async () => {
+  //     const conversations = await getConversations();
+  //     // setAllConversations(conversations);
+  //   };
     
-    loadConversations();
-  }, []); 
+  //   loadConversations();
+  // }, []); 
 
   useEffect(() => {
-    const loadInitialState = async () => {
+    const loadConversationState = async () => {
       const conversation = await getConversation(conversationId);
       if (conversation) {
         setMessages(conversation.messages);
@@ -67,25 +66,8 @@ export default function ChatScreen() {
       }
     };
     
-    loadInitialState();
+    loadConversationState();
   }, [conversationId]);
-
-  useEffect(() => {
-    if(selectedModel){
-      ensureLocalModelContext(selectedModel, inferenceHardware)
-    }
-  }, [selectedModel, inferenceHardware])
-
-  const handleGesture = (event: PanGestureHandlerGestureEvent) => {
-    if (event.nativeEvent.state === State.ACTIVE) { // Gesture has just ended
-      const { absoluteX, translationX, x } = event.nativeEvent;
-      const gestureStartX = x - translationX; // Approximate start position relative to the handler
-  
-      if (gestureStartX < 40 && translationX > 50) {
-        setSidebarOpen(true);
-      }
-    }
-  };
 
   // Save conversation when messages change
   const saveCurrentConversation = async (currentMessages: Message[]) => {
@@ -108,14 +90,6 @@ export default function ChatScreen() {
     
     await saveConversation(conversation);
   };
-  
-  const createNewConversation = () => {
-    // Generate a new conversation ID
-    const newId = generateUniqueId();
-    // Reset the conversation
-    setConversationId(newId);
-    setMessages([]);
-  };
 
   function processFinishedMessage(message: string, model: Model, modelMetrics?: ModelMetrics) {
     // cleanup function when the streaming ends
@@ -135,7 +109,7 @@ export default function ChatScreen() {
         updated.push(AImessage);
       }
       saveCurrentConversation(updated); // save to storage
-      getConversations().then(setAllConversations); // update the conversations list
+      // getConversations().then(setAllConversations); // update the conversations list
       // scrollViewRef.current?.scrollToEnd({ animated: true }); // scroll to the bottom
       streamingUpdateRef.current.text = ''; // clear the streaming text
       return updated;
@@ -184,6 +158,7 @@ export default function ChatScreen() {
     try {
       // await sendChatMessage(
       await streamLlamaCompletion(
+        cactusContext.context,
         updatedMessages,
         selectedModel,
         chatCallbackPartialMessage,
@@ -191,7 +166,6 @@ export default function ChatScreen() {
         true,
         tokenGenerationLimit,
         isReasoningEnabled,
-        inferenceHardware,
       );      
     } catch (error) {
       console.error('Error in chat:', error);
@@ -206,46 +180,27 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <ConversationSidebar
-        isOpen={sidebarOpen}
-        conversations={allConversations}
-        onClose={() => setSidebarOpen(false)}
-        onSelectConversation={setConversationId}
-        onNewConversation={createNewConversation}
-        zIndex={1000}
-      />
-
-        <PanGestureHandler onHandlerStateChange={handleGesture}>
       
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
           style={{ flex: 1 }}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
-          <YStack flex={1} paddingHorizontal={16}>
+          <YStack flex={1} paddingHorizontal="$4">
             <XStack 
               alignItems="center" 
-              marginBottom={16} 
-              marginTop={4}
+              paddingVertical="$2"
               justifyContent="space-between"
             >
               <Button 
-                icon={Menu} 
+                icon={<Menu size="$1"/>} 
                 size="$2" 
                 chromeless 
-                onPress={() => {
-                  if (open) setOpen(false);
-                  setSidebarOpen(true);
-                }}
+                onPress={() => router.push('/conversationsScreen')}
               />
-              <ModelPicker
-                open={open}
-                setModelIsLoading={setModelIsLoading}
-                setOpen={setOpen}
-                zIndex={50}
-              />
+              <ModelDisplay/>
               <Button 
-                icon={Settings} 
+                icon={<Settings size="$1"/>} 
                 size="$2" 
                 chromeless 
                 onPress={() => router.push('/settingsScreen')}
@@ -270,14 +225,11 @@ export default function ChatScreen() {
             <MessageInput 
               sendMessage={sendMessage}
               isStreaming={isStreaming}
-              modelIsLoading={modelIsLoading}
               selectedModel={selectedModel}
               setVoiceMode={setVoiceMode}
             />
           </YStack>
         </KeyboardAvoidingView>
-
-        </PanGestureHandler>
       
         <SettingsSheet
           open={settingsOpen}
@@ -289,7 +241,6 @@ export default function ChatScreen() {
           messages={messages}
           setMessages={setMessages}
         />
-      {/* </GestureHandlerRootView> */}
     </SafeAreaView>
   );
 }

@@ -20,7 +20,7 @@ export const PageHeader = (props: Props) => {
                     size="$2"
                     chromeless
                     position='absolute'
-                    start={8}
+                    start="$2.5"
                 />
             }
             <Text fontSize="$5" fontWeight="600">{props.title}</Text>

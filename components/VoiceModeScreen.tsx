@@ -29,7 +29,7 @@ export const VoiceModeOverlay = ({
   const [isProcessing, setIsProcessing] = useState(false); // whether the LLM is being invoked
   const [aiMessageText, setAiMessageText] = useState<string>(''); // the AI message
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // the error message
-  const { selectedModel, tokenGenerationLimit, inferenceHardware } = useModelContext();
+  const { selectedModel, tokenGenerationLimit, inferenceHardware, cactusContext } = useModelContext();
   const transcribedWordsRef = useRef<string[]>([]);
   const selectedModelRef = useRef<Model | null>(selectedModel);
 
@@ -48,6 +48,7 @@ export const VoiceModeOverlay = ({
       const updatedMessages: Message[] = [...messages, createUserMessage(input, currentModel)];
       setMessages(updatedMessages);
       await streamLlamaCompletion(
+        cactusContext.context,
         updatedMessages,
         currentModel,
         setAiMessageText,
@@ -58,7 +59,6 @@ export const VoiceModeOverlay = ({
         true,
         tokenGenerationLimit,
         false,
-        inferenceHardware,
         true
       );
     }
