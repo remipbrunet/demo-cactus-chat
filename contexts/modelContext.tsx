@@ -1,6 +1,7 @@
 import { createContext, useEffect, useState, useContext } from 'react';
 import { 
   Model, 
+  InferenceHardware,
   fetchModelsAvailableToDownload, 
   ModelAvailableToDownload 
 } from '@/services/models';
@@ -22,8 +23,8 @@ interface ModelContextType {
     refreshModels: () => void;
     tokenGenerationLimit: number;
     setTokenGenerationLimit: (limit: number) => void;
-    inferenceHardware: string[];
-    setInferenceHardware: (hardware: string[]) => void;
+    inferenceHardware: InferenceHardware[];
+    setInferenceHardware: (hardware: InferenceHardware[]) => void;
     isReasoningEnabled: boolean;
     setIsReasoningEnabled: (enabled: boolean) => void;
     modelsAvailableToDownload: ModelAvailableToDownload[];
@@ -48,7 +49,7 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [modelsVersion, setModelsVersion] = useState<number>(0);
   const [tokenGenerationLimit, setTokenGenerationLimit] = useState<number>(1000);
-  const [inferenceHardware, setInferenceHardware] = useState<string[]>(['cpu']);
+  const [inferenceHardware, setInferenceHardware] = useState<InferenceHardware[]>(['cpu']);
   const [isReasoningEnabled, setIsReasoningEnabled] = useState<boolean>(true);
   const [modelsAvailableToDownload, setModelsAvailableToDownload] = useState<ModelAvailableToDownload[]>([]);
 

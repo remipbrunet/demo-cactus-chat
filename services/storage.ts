@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message } from '@/components/ui/chat/ChatMessage';
-import { Model, ModelAvailableToDownload } from '@/services/models';
+import { InferenceHardware, Model, ModelAvailableToDownload } from '@/services/models';
 import * as FileSystem from 'expo-file-system';
 import { Provider } from '@/services/models';
 import { supabase } from '@/services/supabase';
@@ -26,12 +26,12 @@ export const saveTokenGenerationLimit = async (limit: number) => {
   await AsyncStorage.setItem(TOKEN_GENERATION_LIMIT_KEY, limit.toString());
 }
 
-export const getInferenceHardware = async (): Promise<string[]> => {
+export const getInferenceHardware = async (): Promise<InferenceHardware[]> => {
   const hardware = await AsyncStorage.getItem(INFERENCE_HARDWARE_KEY);
   return hardware ? JSON.parse(hardware) : ['cpu'];
 }
 
-export const saveInferenceHardware = async (hardware: string[]) => {
+export const saveInferenceHardware = async (hardware: InferenceHardware[]) => {
   const jsonValue = JSON.stringify(hardware);
   await AsyncStorage.setItem(INFERENCE_HARDWARE_KEY, jsonValue);
 }

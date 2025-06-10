@@ -1,5 +1,5 @@
 import { XStack, YStack, Button, ScrollView } from 'tamagui';
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Menu, Settings } from '@tamagui/lucide-icons';
@@ -7,7 +7,6 @@ import { ChatMessage, createUserMessage } from '@/components/ui/chat/ChatMessage
 import { ModelPicker } from '@/components/ui/chat/ModelPicker';
 import { ConversationSidebar } from '@/components/ui/chat/ConversationSidebar';
 import { SettingsSheet } from '@/components/SettingsSheet';
-import { sendChatMessage, generateUniqueId } from '@/services/chat/chat';
 import { PanGestureHandler, PanGestureHandlerGestureEvent, State } from 'react-native-gesture-handler';
 import { 
   Conversation, 
@@ -23,6 +22,8 @@ import { MessageInput } from '@/components/ui/chat/MessageInput';
 import { Model } from '@/services/models';
 import { VoiceModeOverlay } from '@/components/VoiceModeScreen';
 import { router } from 'expo-router';
+import { streamLlamaCompletion, generateUniqueId } from '@/services/chat/llama-local';
+import { ensureLocalModelContext } from '@/utils/localModelContext';
 
 export default function ChatScreen() {
   const [open, setOpen] = useState(false);
@@ -37,7 +38,7 @@ export default function ChatScreen() {
   const [voiceMode, setVoiceMode] = useState(false);
   
   const scrollViewRef = useRef<any>(null);
-  const { selectedModel, tokenGenerationLimit } = useModelContext();
+  const { selectedModel, tokenGenerationLimit, inferenceHardware, isReasoningEnabled } = useModelContext();
   
   // Single ref for streaming updates
   const streamingUpdateRef = useRef<{
@@ -53,21 +54,13 @@ export default function ChatScreen() {
     };
     
     loadConversations();
-  }, []); // Reload once
+  }, []); 
 
-  // Load initial state
   useEffect(() => {
     const loadInitialState = async () => {
-      
-      // Load conversation
       const conversation = await getConversation(conversationId);
       if (conversation) {
         setMessages(conversation.messages);
-        // Set model from conversation if available
-        // const model = initialModels.find(m => m.value === conversation.model.value);
-        // if (model && !model.disabled) {
-          // setValue(model.value);
-        // }
       } else {
         setMessages([]);
         saveCurrentConversation([]);
@@ -76,6 +69,12 @@ export default function ChatScreen() {
     
     loadInitialState();
   }, [conversationId]);
+
+  useEffect(() => {
+    if(selectedModel){
+      ensureLocalModelContext(selectedModel, inferenceHardware)
+    }
+  }, [selectedModel, inferenceHardware])
 
   const handleGesture = (event: PanGestureHandlerGestureEvent) => {
     if (event.nativeEvent.state === State.ACTIVE) { // Gesture has just ended
@@ -183,13 +182,16 @@ export default function ChatScreen() {
     
     setIsStreaming(true);
     try {
-      await sendChatMessage(
+      // await sendChatMessage(
+      await streamLlamaCompletion(
         updatedMessages,
         selectedModel,
         chatCallbackPartialMessage,
         chatCallbackCompleteMessage,
-        { streaming: true },
-        tokenGenerationLimit
+        true,
+        tokenGenerationLimit,
+        isReasoningEnabled,
+        inferenceHardware,
       );      
     } catch (error) {
       console.error('Error in chat:', error);

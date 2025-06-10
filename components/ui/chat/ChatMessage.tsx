@@ -2,7 +2,7 @@ import { XStack, YStack, Text, View } from 'tamagui';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import { Model } from '@/services/models';
 import Markdown from 'react-native-markdown-display';
-import { generateUniqueId } from '@/services/chat/chat';
+import { generateUniqueId } from '@/services/chat/llama-local';
 import { Copy } from '@tamagui/lucide-icons';
 import { TouchableOpacity } from 'react-native';
 import { Clipboard } from 'react-native';
@@ -40,23 +40,23 @@ export function ChatMessage({ message }: ChatMessageProps) {
         maxWidth="85%"
       >
         {!isUser && model?.label && (
-          <YStack marginBottom={8}>
-            <Text color="$gray10" fontSize={12} opacity={0.7}>
+          <YStack marginBottom="$2">
+            <Text color="$gray10" fontSize={12} opacity={0.7} fontWeight={300}>
               {model.label}
             </Text>
           </YStack>
         )}
         <Markdown 
           style={{ 
-            paragraph: { fontSize: 14, lineHeight: 21, fontWeight: '400', marginTop: 0, marginBottom: 0 },
-            bullet_list_content: { fontSize: 14, lineHeight: 21, fontWeight: '400', marginTop: 0, marginBottom: 5 },
-            ordered_list_content: { fontSize: 14, lineHeight: 21, fontWeight: '400', marginTop: 0, marginBottom: 5 },
-            heading1: { fontSize: 26, lineHeight: 31, fontWeight: '600', marginTop: 10, marginBottom: 10 },
-            heading2: { fontSize: 21, lineHeight: 31, fontWeight: '600', marginTop: 10, marginBottom: 10 },
-            heading3: { fontSize: 18, lineHeight: 21, fontWeight: '600', marginTop: 10, marginBottom: 10 },
-            heading4: { fontSize: 16, lineHeight: 21, fontWeight: '600', marginTop: 10, marginBottom: 10 },
-            heading5: { fontSize: 14, lineHeight: 21, fontWeight: '600', marginTop: 10, marginBottom: 10 },
-            heading6: { fontSize: 13, lineHeight: 21, fontWeight: '600', marginTop: 10, marginBottom: 10 },
+            paragraph: { fontSize: 14, lineHeight: 21, fontWeight: '300', marginTop: 0, marginBottom: 0 },
+            bullet_list_content: { fontSize: 14, lineHeight: 21, fontWeight: '300', marginTop: 0, marginBottom: 5 },
+            ordered_list_content: { fontSize: 14, lineHeight: 21, fontWeight: '300', marginTop: 0, marginBottom: 5 },
+            heading1: { fontSize: 26, lineHeight: 31, fontWeight: '400', marginTop: 10, marginBottom: 10 },
+            heading2: { fontSize: 21, lineHeight: 31, fontWeight: '400', marginTop: 10, marginBottom: 10 },
+            heading3: { fontSize: 18, lineHeight: 21, fontWeight: '400', marginTop: 10, marginBottom: 10 },
+            heading4: { fontSize: 16, lineHeight: 21, fontWeight: '400', marginTop: 10, marginBottom: 10 },
+            heading5: { fontSize: 14, lineHeight: 21, fontWeight: '400', marginTop: 10, marginBottom: 10 },
+            heading6: { fontSize: 13, lineHeight: 21, fontWeight: '400', marginTop: 10, marginBottom: 10 },
             bullet_list_icon: { marginLeft: 5, marginRight: 5, lineHeight: 21 },
             ordered_list_icon: { marginLeft: 5, marginRight: 5, lineHeight: 21 },
             fence: { marginTop: 10, marginBottom: 10 },
@@ -90,8 +90,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
         </Markdown>
         
         {!isUser && metrics && (
-          <YStack marginTop={8}>
-            <Text color="$gray10" fontSize={12} opacity={0.7}>
+          <YStack marginTop="$2">
+            <Text color="$gray10" fontSize={12} opacity={0.7} fontWeight={300}>
               Tokens: {metrics.completionTokens} • TTFT: {Math.round(metrics.timeToFirstToken)}ms • {Math.round(metrics.tokensPerSecond)} tok/sec
             </Text>
           </YStack>

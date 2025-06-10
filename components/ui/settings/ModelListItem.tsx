@@ -47,8 +47,8 @@ export const ModelListItem: React.FC<ModelListItemProps> = ({
       onPress={() => {downloadedModel ? setSelectedModel(downloadedModel) : onDownloadClick()}}
     >
       <YStack flex={1} marginRight="$2">
-        <RegularText textAlign='left' fontWeight={400}>{modelName}</RegularText>
-        {modelComment && <RegularText textAlign='left'>{modelComment}</RegularText>}
+        <RegularText textAlign='left' fontWeight={400} color={downloaded ? "$black" : "$gray10"}>{modelName}</RegularText>
+        {modelComment && <RegularText textAlign='left' color={downloaded ? "$black" : "$gray10"}>{modelComment}</RegularText>}
       </YStack>
 
       {/* Action Button: Download or Delete */}

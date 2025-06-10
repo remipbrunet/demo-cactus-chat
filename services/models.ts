@@ -4,6 +4,7 @@ import { getTotalMemory } from 'react-native-device-info';
 
 // export type Provider = 'OpenAI' | 'Cactus' | 'Anthropic' | 'Google';
 export type Provider = 'Cactus'
+export type InferenceHardware = 'cpu' | 'gpu'
 
 export interface Model {
   value: string; // used as unique ID and display name

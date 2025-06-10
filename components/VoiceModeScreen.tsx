@@ -1,7 +1,7 @@
 import { YStack, Button, Text } from 'tamagui';
 import { X, Mic } from '@tamagui/lucide-icons'; // Import the X icon
 import { useModelContext } from '../contexts/modelContext';
-import { sendChatMessage } from '../services/chat/chat';
+import { streamLlamaCompletion } from '../services/chat/llama-local';
 import { Message } from './ui/chat/ChatMessage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { startRecognizing, stopRecognizing, removeEmojis } from '../utils/voiceFunctions';
@@ -29,24 +29,11 @@ export const VoiceModeOverlay = ({
   const [isProcessing, setIsProcessing] = useState(false); // whether the LLM is being invoked
   const [aiMessageText, setAiMessageText] = useState<string>(''); // the AI message
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // the error message
-  const { selectedModel, tokenGenerationLimit } = useModelContext();
+  const { selectedModel, tokenGenerationLimit, inferenceHardware } = useModelContext();
   const transcribedWordsRef = useRef<string[]>([]);
   const selectedModelRef = useRef<Model | null>(selectedModel);
 
   const appleVoice = 'com.apple.speech.voice.Alex';
-
-  const voiceDebug = useCallback((voiceMessage: string) => {
-    Tts.speak(voiceMessage, {
-    // Tts.speak(`Invoking ${selectedModel?.value} from ${transcribedWordsRef.current[0]} to ${transcribedWordsRef.current[transcribedWordsRef.current.length - 1]}`, {
-      iosVoiceId: appleVoice,
-      rate: 0.5,
-      androidParams: {
-        KEY_PARAM_STREAM: 'STREAM_MUSIC',
-        KEY_PARAM_VOLUME: 1.0,
-        KEY_PARAM_PAN: 0.0
-      }
-    });
-  }, [transcribedWordsRef.current, selectedModel]);
 
   useEffect(() => {
     selectedModelRef.current = selectedModel;
@@ -60,7 +47,7 @@ export const VoiceModeOverlay = ({
     if (currentModel) {
       const updatedMessages: Message[] = [...messages, createUserMessage(input, currentModel)];
       setMessages(updatedMessages);
-      await sendChatMessage(
+      await streamLlamaCompletion(
         updatedMessages,
         currentModel,
         setAiMessageText,
@@ -68,19 +55,14 @@ export const VoiceModeOverlay = ({
           setIsProcessing(false);
           setMessages([...updatedMessages, createAIMessage(completeMessage, model, metrics)]);
         },
-        { streaming: true, voiceMode: true },
-        tokenGenerationLimit
+        true,
+        tokenGenerationLimit,
+        false,
+        inferenceHardware,
+        true
       );
     }
   }, [messages, selectedModelRef, tokenGenerationLimit])//, setMessages, setAiMessageText, setIsProcessing]);
-
-  // const onSpeechResults = async (e: SpeechResultsEvent) => {
-  //   // this is technically the final result 
-  //   console.log('CACTUSDEBUG onSpeechResults: ', e);
-  //   // if (e.value) {
-  //   //   await invokeLLM(e.value);
-  //   // }
-  // };
 
   // Called when speech recognition encounters an error
   const onSpeechError = useCallback((e: any) => {
@@ -114,10 +96,6 @@ export const VoiceModeOverlay = ({
     console.log('CACTUSDEBUG onSpeechPartialResults: ', e);
   }, []);
 
-  // const onSpeechRecognized = (e: SpeechRecognizedEvent) => {
-  //   console.log('CACTUSDEBUG onSpeechRecognized: ', e);
-  // };
-  
   useEffect(() => {
     // Add listeners
     Voice.onSpeechStart = onSpeechStart;

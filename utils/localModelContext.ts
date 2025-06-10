@@ -1,27 +1,36 @@
 // import { initLlama, LlamaContext } from 'llama.rn';
-import { initLlama, LlamaContext } from 'cactus-react-native'
+import { initLlama, LlamaContext, releaseAllLlama } from 'cactus-react-native'
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
-import { Model } from '@/services/models';
+import { InferenceHardware, Model } from '@/services/models';
 import { logModelLoadDiagnostics } from '@/services/diagnostics';
 import { getFullModelPath, getInferenceHardware } from '@/services/storage';
 
 interface LoadedContext {
     context: LlamaContext | null,
-    modelValue: string
+    modelValue: string,
+    inferenceHardware: InferenceHardware[]
 }
 
 export let loadedContext: LoadedContext = {
     context: null,
-    modelValue: ''
+    modelValue: '',
+    inferenceHardware: []
 };
 
 // Initialize Llama context for specific model
-export const ensureLocalModelContext = async (model: Model): Promise<LlamaContext | null> => {
+export const ensureLocalModelContext = async (
+  model: Model,
+  inferenceHardware: InferenceHardware[]
+): Promise<LlamaContext | null> => {
 
-  if (loadedContext && loadedContext.modelValue === model.value) return loadedContext.context
+  if (loadedContext && 
+    loadedContext.modelValue === model.value && 
+    loadedContext.inferenceHardware === inferenceHardware
+  ) return loadedContext.context
 
   if (model.isLocal) {
+    await releaseAllLlama();
     const modelPath = getFullModelPath(model.meta?.fileName || '');
     if (model && (await FileSystem.getInfoAsync(modelPath)).exists) {
       loadedContext.modelValue = model.value;

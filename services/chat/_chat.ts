@@ -17,6 +17,7 @@ export interface ChatCompleteCallback {
 export interface ChatOptions {
   streaming?: boolean;
   voiceMode?: boolean; // only used by Llama local
+  isReasoningEnabled?: boolean;
 }
 
 /**
@@ -31,51 +32,51 @@ export async function sendChatMessage(
   maxTokens: number
 ): Promise<void> {
   try {
-    switch (model.provider) {
-      case 'OpenAI':
-        return await streamOpenAICompletion(
-          messages, 
-          model, 
-          onProgress, 
-          onComplete, 
-          options.streaming,
-          maxTokens,
-        );
+    // switch (model.provider) {
+    //   case 'OpenAI':
+    //     return await streamOpenAICompletion(
+    //       messages, 
+    //       model, 
+    //       onProgress, 
+    //       onComplete, 
+    //       options.streaming,
+    //       maxTokens,
+    //     );
         
-      case 'Anthropic':
-        return await streamAnthropicCompletion(
-          messages, 
-          model, 
-          onProgress, 
-          onComplete, 
-          options.streaming,
-          maxTokens,
-        );
+    //   case 'Anthropic':
+    //     return await streamAnthropicCompletion(
+    //       messages, 
+    //       model, 
+    //       onProgress, 
+    //       onComplete, 
+    //       options.streaming,
+    //       maxTokens,
+    //     );
         
-      case 'Google':
-        return await streamGeminiCompletion(
-          messages, 
-          model, 
-          onProgress, 
-          onComplete, 
-          options.streaming,
-          maxTokens,
-        );
+    //   case 'Google':
+    //     return await streamGeminiCompletion(
+    //       messages, 
+    //       model, 
+    //       onProgress, 
+    //       onComplete, 
+    //       options.streaming,
+    //       maxTokens,
+    //     );
         
-      case 'Cactus':
-        return await streamLlamaCompletion(
-          messages, 
-          model, 
-          onProgress, 
-          onComplete, 
-          options.streaming,
-          maxTokens,
-          options.voiceMode
-        );
+    //   case 'Cactus':
+      return await streamLlamaCompletion(
+        messages, 
+        model, 
+        onProgress, 
+        onComplete, 
+        options.streaming,
+        maxTokens,
+        options.voiceMode
+      );
         
-      default:
-        throw new Error(`Unknown provider: ${model.provider}`);
-    }
+      // default:
+      //   throw new Error(`Unknown provider: ${model.provider}`);
+    // }
   } catch (error) {
     console.error(`Chat service error with ${model.provider}:`, error);
     throw error;
