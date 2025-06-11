@@ -1,6 +1,6 @@
 import { Message } from '@/components/ui/chat/ChatMessage';
 import { ModelMetrics } from '@/utils/modelMetrics';
-import { Model, InferenceHardware } from '../models';
+import { Model } from '../models';
 import { LlamaContext } from 'cactus-react-native';
 import * as Haptics from 'expo-haptics';
 

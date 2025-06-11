@@ -1,33 +1,26 @@
-import { XStack, YStack, Button, ScrollView } from 'tamagui';
 import { useRef, useState, useEffect } from 'react';
+import { XStack, YStack, Button, ScrollView } from 'tamagui';
 import { KeyboardAvoidingView, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Menu, Settings } from '@tamagui/lucide-icons';
-import { ChatMessage, createUserMessage } from '@/components/ui/chat/ChatMessage';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+
+import { Conversation, saveConversation, getConversation } from '../services/storage';
+import { ChatMessage, createUserMessage, Message } from '@/components/ui/chat/ChatMessage';
 import { ModelDisplay } from '@/components/ui/chat/ModelDisplay';
-import { SettingsSheet } from '@/components/SettingsSheet';
-import { 
-  Conversation, 
-  saveConversation, 
-  getConversation, 
-  getConversations,
-} from '../services/storage';
 import { ModelMetrics } from '@/utils/modelMetrics';
-import { Message } from '@/components/ui/chat/ChatMessage';
 import { useModelContext } from '@/contexts/modelContext';
 import { logChatCompletionDiagnostics } from '@/services/diagnostics';
 import { MessageInput } from '@/components/ui/chat/MessageInput';
 import { Model } from '@/services/models';
 import { VoiceModeOverlay } from '@/components/VoiceModeScreen';
-import { router } from 'expo-router';
 import { streamLlamaCompletion, generateUniqueId } from '@/services/chat/llama-local';
+
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentAIMessage, setCurrentAIMessage] = useState<string>('');
   const [isStreaming, setIsStreaming] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  // const [allConversations, setAllConversations] = useState<Conversation[]>([]);
   const [voiceMode, setVoiceMode] = useState(false);
   
   const scrollViewRef = useRef<any>(null);
@@ -44,16 +37,6 @@ export default function ChatScreen() {
     text: string;
     frameId: number | null;
   }>({ text: '', frameId: null });
-
-  // Load conversations list
-  // useEffect(() => {
-  //   const loadConversations = async () => {
-  //     const conversations = await getConversations();
-  //     // setAllConversations(conversations);
-  //   };
-    
-  //   loadConversations();
-  // }, []); 
 
   useEffect(() => {
     const loadConversationState = async () => {
@@ -109,8 +92,6 @@ export default function ChatScreen() {
         updated.push(AImessage);
       }
       saveCurrentConversation(updated); // save to storage
-      // getConversations().then(setAllConversations); // update the conversations list
-      // scrollViewRef.current?.scrollToEnd({ animated: true }); // scroll to the bottom
       streamingUpdateRef.current.text = ''; // clear the streaming text
       return updated;
     });
@@ -230,11 +211,6 @@ export default function ChatScreen() {
             />
           </YStack>
         </KeyboardAvoidingView>
-      
-        <SettingsSheet
-          open={settingsOpen}
-          onOpenChange={setSettingsOpen}
-        />
         <VoiceModeOverlay
           visible={voiceMode}
           onClose={() => setVoiceMode(false)}

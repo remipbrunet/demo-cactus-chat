@@ -14,11 +14,12 @@ export interface CactusFunctionalitySelection {
     id: string;
     folderName: string, // legacy support for naming the model folder 'local-models'
     urls: string[];
+    modelName: string;
     title: string;
     description: string;
     required: boolean;
     selected: boolean;
-    icon: (props: IconProps) => JSX.Element
+    icon: (props: IconProps) => JSX.Element;
     downloadSize: number;
 }
 
@@ -30,6 +31,7 @@ const defaultFunctionalitySelections: CactusFunctionalitySelection[] = [
             "https://huggingface.co/mradermacher/tinyllama-15M-GGUF/resolve/main/tinyllama-15M.IQ4_XS.gguf", 
             "https://huggingface.co/mradermacher/tinyllama-15M-GGUF/resolve/main/tinyllama-15M.Q2_K.gguf"
         ],
+        modelName: "tinyllama-15M",
         title: "Cactus Chat",
         description: "Chat with Cactus using text",
         required: true,
@@ -81,7 +83,11 @@ export default function FunctionalitySelectionScreen() {
             if (!error && data) {
                 const modelChoices = data
                     .filter(record => record.is_default)
-                    .map(record => ({type: record.type, urls: record.download_urls}));
+                    .map(record => ({
+                        type: record.type, 
+                        urls: record.download_urls,
+                        name: record.name
+                    }));
 
                 const promisesToUpdateSelections = functionalitySelections.map(async (existingFunctionalitySelection) => {
                     const matchingChoice = modelChoices.find(choice => choice.type === existingFunctionalitySelection.id);
@@ -105,6 +111,7 @@ export default function FunctionalitySelectionScreen() {
                         const totalDownloadSize = fileSizes.reduce((sum, size) => sum + size, 0);
                         return {
                             ...existingFunctionalitySelection,
+                            modelName: matchingChoice.name,
                             urls: matchingChoice.urls,
                             downloadSize: totalDownloadSize / 1024 / 1024 / 1024,
                         };

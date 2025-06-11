@@ -20,15 +20,11 @@ export function ModelDisplay() {
     )
   }
 
-  if(isContextLoading){
-    return <ActivityIndicator/>
-  }
-
   if (!availableModels.filter(model => !model.disabled).length) {
     return <ModelDisplayPlaceholder />
   }
 
   return (
-    <RegularText fontWeight={600}>{selectedModel?.value}</RegularText>
+    <RegularText fontSize="$4" fontWeight={600} color={isContextLoading ? '$gray8' : '$black'}>{selectedModel?.value}</RegularText>
   );
 } 

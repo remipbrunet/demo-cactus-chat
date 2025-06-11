@@ -1,7 +1,7 @@
 import { Spinner, YStack, Button, Input, XStack } from "tamagui"
 import { Send, Pause, Mic } from "@tamagui/lucide-icons";
 import { Model } from "@/services/models";
-import { useState, memo, useCallback } from "react";
+import { useState, memo} from "react";
 import { requestMicrophonePermission } from "@/utils/voiceFunctions";
 import { useModelContext } from "@/contexts/modelContext";
 
@@ -78,21 +78,21 @@ function MessageInputComponent({ sendMessage, isStreaming, selectedModel, setVoi
     const [ inputText, setInputText ] = useState<string>('')
     const { isContextLoading, cactusContext } = useModelContext()
 
-    const onSubmit = useCallback(() => {
+    const onSubmit = () => {
         sendMessage(inputText)
         setInputText('')
-    }, [sendMessage, inputText])
+    }
 
-    const handlePause = useCallback(() => {
+    const handlePause = () => {
         console.log('pause!')
         cactusContext.context?.stopCompletion();
-    }, [])
+    }
 
     return (
         <XStack 
             paddingVertical={16}
             borderWidth={1}
-            borderColor="$black"
+            borderColor={isContextLoading ? '$gray8' : '$black'}
             borderRadius='$6'
             marginBottom='$2'
             padding="$2"

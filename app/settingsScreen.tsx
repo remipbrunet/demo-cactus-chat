@@ -1,4 +1,4 @@
-import { ScrollView, Slider, Text, XStack, YStack, ToggleGroup, Switch, Button, Input, Progress } from 'tamagui';
+import { ScrollView, Slider, Text, XStack, YStack, ToggleGroup, Switch, Button, Input, Progress, View } from 'tamagui';
 import { Zap, Cpu, Brain, HardDrive, Download } from '@tamagui/lucide-icons';
 import { useState } from 'react';
 import { Alert } from 'react-native';
@@ -142,7 +142,7 @@ export default function SettingsScreen() {
                         </ToggleGroup>
                         <RegularText>Select CPU-only for battery-efficient inference.</RegularText>
                     </YStack>
-                    <YStack gap="$2">
+                    {/* <YStack gap="$2">
                         <XStack>
                             <XStack flex={1}>
                                 <TextWithIcon Icon={Brain} text="Reasoning mode"/>
@@ -152,7 +152,7 @@ export default function SettingsScreen() {
                             </Switch>
                         </XStack>
                         <RegularText>Slower, more thoughtful responses from reasoning-enabled models.</RegularText>
-                    </YStack>
+                    </YStack> */}
                     <YStack gap="$2">
                         <TextWithIcon Icon={HardDrive} text="Local models"/>
                         {downloadInProgress && (

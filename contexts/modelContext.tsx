@@ -10,6 +10,7 @@ import {
   getLocalModels,
   saveTokenGenerationLimit, 
   getTokenGenerationLimit, 
+  saveLastUsedModel,
   getLastUsedModel, 
   getInferenceHardware, 
   saveInferenceHardware, 
@@ -92,7 +93,7 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
     getLocalModels().then((availableModels) => {
       setAvailableModels(availableModels);
       getLastUsedModel().then((lastUsedModel) => {
-        setSelectedModel(availableModels.find(m => m.value === lastUsedModel) || null);
+        setSelectedModel(availableModels.find(m => m.value === lastUsedModel) || availableModels[0]);
       });
     });
     fetchModelsAvailableToDownload().then((models) => {
@@ -140,6 +141,7 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
           inferenceHardware: inferenceHardware
         })
         setIsContextLoading(false)
+        saveLastUsedModel(selectedModel.value);
       }
     }
     reloadModelContext()

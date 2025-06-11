@@ -48,7 +48,7 @@ export default function SettingsScreen() {
             </XStack>
             <ScrollView width="100%" style={{ height: screenHeight * 0.8 }}>
                 <YStack gap="$4">
-                    { conversations.map((conversation) => (
+                    { conversations.length > 0 ? conversations.map((conversation) => (
                         <YStack 
                             key={conversation.id} 
                             paddingHorizontal="$4" 
@@ -60,7 +60,9 @@ export default function SettingsScreen() {
                                 <RegularText>{new Date(conversation.lastUpdated).toLocaleDateString()}</RegularText>
                             </XStack>
                         </YStack>
-                    )) }
+                    )) : (
+                        <RegularText>No conversations yet. Get chatting!</RegularText>
+                    )}
                 </YStack>
             </ScrollView>
         </OnboardingScreenLayout>
