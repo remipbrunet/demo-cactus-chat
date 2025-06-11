@@ -1,30 +1,66 @@
 import { createContext, useEffect, useState, useContext } from 'react';
-import { Model, refreshModelAvailability, isOpenAIAvailable, isAnthropicAvailable, isGeminiAvailable, fetchModelsAvailableToDownload, ModelAvailableToDownload } from '@/services/models';
-import { saveTokenGenerationLimit, getTokenGenerationLimit, getLastUsedModel } from '@/services/storage';
+import { Platform } from 'react-native';
+import { 
+  Model, 
+  InferenceHardware,
+  fetchModelsAvailableToDownload, 
+  ModelAvailableToDownload 
+} from '@/services/models';
+import { 
+  getLocalModels,
+  saveTokenGenerationLimit, 
+  getTokenGenerationLimit, 
+  saveLastUsedModel,
+  getLastUsedModel, 
+  getInferenceHardware, 
+  saveInferenceHardware, 
+  getIsReasoningEnabled, 
+  saveIsReasoningEnabled,
+  getFullModelPath
+} from '@/services/storage';
+import { initLlama, LlamaContext, releaseAllLlama } from 'cactus-react-native';
+import { logModelLoadDiagnostics } from '@/services/diagnostics';
+import { generateUniqueId } from '@/services/chat/llama-local';
+
+interface LoadedContext {
+  context: LlamaContext | null,
+  model: Model | null,
+  inferenceHardware: InferenceHardware[]
+}
 
 interface ModelContextType {
+    cactusContext: LoadedContext;
+    isContextLoading: boolean;
     availableModels: Model[];
     selectedModel: Model | null;
     setSelectedModel: (model: Model | null) => void;
     refreshModels: () => void;
-    hasOpenAIKey: boolean;
-    hasAnthropicKey: boolean;
-    hasGeminiKey: boolean;
     tokenGenerationLimit: number;
     setTokenGenerationLimit: (limit: number) => void;
+    inferenceHardware: InferenceHardware[];
+    setInferenceHardware: (hardware: InferenceHardware[]) => void;
+    isReasoningEnabled: boolean;
+    setIsReasoningEnabled: (enabled: boolean) => void;
+    conversationId: string;
+    setConversationId: (id: string) => void;
     modelsAvailableToDownload: ModelAvailableToDownload[];
 }
 
 const ModelContext = createContext<ModelContextType>({
+    cactusContext: {context: null, model: null, inferenceHardware: []},
+    isContextLoading: false,
     availableModels: [],
     selectedModel: null,
     setSelectedModel: () => {},
     refreshModels: () => {},
-    hasOpenAIKey: false,
-    hasAnthropicKey: false,
-    hasGeminiKey: false,
-    tokenGenerationLimit: 50,
+    tokenGenerationLimit: 1000,
     setTokenGenerationLimit: () => {},
+    inferenceHardware: ['cpu'],
+    setInferenceHardware: () => {},
+    isReasoningEnabled: true,
+    setIsReasoningEnabled: () => {},
+    conversationId: generateUniqueId(),
+    setConversationId: () => {},
     modelsAvailableToDownload: [],
 });
 
@@ -32,10 +68,12 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   const [availableModels, setAvailableModels] = useState<Model[]>([]);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [modelsVersion, setModelsVersion] = useState<number>(0);
-  const [hasOpenAIKey, setHasOpenAIKey] = useState<boolean>(false);
-  const [hasAnthropicKey, setHasAnthropicKey] = useState<boolean>(false);
-  const [hasGeminiKey, setHasGeminiKey] = useState<boolean>(false);
   const [tokenGenerationLimit, setTokenGenerationLimit] = useState<number>(1000);
+  const [inferenceHardware, setInferenceHardware] = useState<InferenceHardware[]>(['cpu']);
+  const [cactusContext, setCactusContext] = useState<LoadedContext>({context: null, model: null, inferenceHardware: []});
+  const [isContextLoading, setIsContextLoading] = useState<boolean>(false);
+  const [isReasoningEnabled, setIsReasoningEnabled] = useState<boolean>(true);
+  const [conversationId, setConversationId] = useState<string>(generateUniqueId())
   const [modelsAvailableToDownload, setModelsAvailableToDownload] = useState<ModelAvailableToDownload[]>([]);
 
   function refreshModels() {
@@ -46,10 +84,16 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
     getTokenGenerationLimit().then((limit) => {
       setTokenGenerationLimit(limit);
     });
-    refreshModelAvailability().then((models) => {
-      setAvailableModels(models);
-      getLastUsedModel().then((model) => {
-        setSelectedModel(availableModels.find(m => m.value === model) || null);
+    getInferenceHardware().then((hardware) => {
+      setInferenceHardware(hardware)
+    });
+    getIsReasoningEnabled().then((enabled) => {
+      setIsReasoningEnabled(enabled)
+    })
+    getLocalModels().then((availableModels) => {
+      setAvailableModels(availableModels);
+      getLastUsedModel().then((lastUsedModel) => {
+        setSelectedModel(availableModels.find(m => m.value === lastUsedModel) || availableModels[0]);
       });
     });
     fetchModelsAvailableToDownload().then((models) => {
@@ -62,22 +106,66 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   }, [tokenGenerationLimit]);
 
   useEffect(() => {
-    refreshModelAvailability().then((models) => {
+    saveInferenceHardware(inferenceHardware)
+  }, [inferenceHardware])
+
+  useEffect(() => {
+    saveIsReasoningEnabled(isReasoningEnabled)
+  }, [isReasoningEnabled])
+
+  useEffect(() => {
+    getLocalModels().then((models) => {
       setAvailableModels(models);
-    });
-    isOpenAIAvailable().then((hasKey) => {
-      setHasOpenAIKey(hasKey);
-    });
-    isAnthropicAvailable().then((hasKey) => {
-      setHasAnthropicKey(hasKey);
-    });
-    isGeminiAvailable().then((hasKey) => {
-      setHasGeminiKey(hasKey);
     });
   }, [modelsVersion])
 
+  useEffect(() => {
+    const reloadModelContext = async () => {
+      if (selectedModel){
+        setIsContextLoading(true);
+        await releaseAllLlama();
+        const modelPath = getFullModelPath(selectedModel.meta?.fileName || '');
+        const gpuLayers = Platform.OS === 'ios' && inferenceHardware.includes('gpu') ? 99 : 0
+        const startTime = performance.now();
+        const context = await initLlama({
+          model: modelPath,
+          use_mlock: true,
+          n_ctx: 2048,
+          n_gpu_layers: gpuLayers
+        });
+        const endTime = performance.now();
+        logModelLoadDiagnostics({model: selectedModel.value, loadTime: endTime - startTime});
+        setCactusContext({
+          context: context,
+          model: selectedModel,
+          inferenceHardware: inferenceHardware
+        })
+        setIsContextLoading(false)
+        saveLastUsedModel(selectedModel.value);
+      }
+    }
+    reloadModelContext()
+    console.log('reloading context!')
+  }, [selectedModel, inferenceHardware])
+
   return (
-  <ModelContext.Provider value={{ availableModels, selectedModel, setSelectedModel, refreshModels, hasOpenAIKey, hasAnthropicKey, hasGeminiKey, tokenGenerationLimit, setTokenGenerationLimit, modelsAvailableToDownload }}>
+  <ModelContext.Provider value={{ 
+    cactusContext,
+    isContextLoading,
+    availableModels, 
+    selectedModel, 
+    setSelectedModel, 
+    refreshModels, 
+    tokenGenerationLimit, 
+    setTokenGenerationLimit, 
+    inferenceHardware, 
+    setInferenceHardware, 
+    isReasoningEnabled, 
+    setIsReasoningEnabled, 
+    conversationId,
+    setConversationId,
+    modelsAvailableToDownload 
+  }}>
     {children}
   </ModelContext.Provider>
   )

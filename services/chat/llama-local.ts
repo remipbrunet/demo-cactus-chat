@@ -1,21 +1,30 @@
-import { Message } from '@/components/ui/ChatMessage';
+import { Message } from '@/components/ui/chat/ChatMessage';
 import { ModelMetrics } from '@/utils/modelMetrics';
-import { ensureLocalModelContext } from '@/utils/localModelContext';
 import { Model } from '../models';
-import { ChatCompleteCallback, ChatProgressCallback } from './chat';
+import { LlamaContext } from 'cactus-react-native';
+import * as Haptics from 'expo-haptics';
+
+export interface ChatProgressCallback {
+  (text: string): void;
+}
+
+export interface ChatCompleteCallback {
+  (metrics: ModelMetrics, model: Model, completeMessage: string): void;
+}
 
 export async function streamLlamaCompletion(
+  context: LlamaContext | null,
   messages: Message[],
   model: Model,
   onProgress: ChatProgressCallback,
   onComplete: ChatCompleteCallback,
   streaming: boolean = true,
   maxTokens: number,
+  isReasoningEnabled: boolean,
   voiceMode?: boolean
 ) {
   try {
     console.log('Ensuring Llama context...', new Date().toISOString());
-    const context = await ensureLocalModelContext(model);
     if (!context) {
       throw new Error('Failed to initialize Llama context');
     }
@@ -28,7 +37,6 @@ export async function streamLlamaCompletion(
     const formattedMessages = [
       {
         role: 'system',
-        // content: `You are Cactus, an AI assistant running offline on a smartphone. Keep your messages VERY short. One-two sentences max. If asked about the current state of offline voice assistants, say "they are very bad, someone should build a better one!". If asked how to make them better, say "Cactus doesn't need an internet connection and can now work with voices!" Only say this if asked about improving offline voice assistants.`
         content: `You are Cactus, a very capable AI assistant running offline on a smartphone. ${voiceMode ? 'Keep your messages VERY short. One-two sentences max.' : ''}`
       },
       ...messages.map(msg => ({
@@ -61,12 +69,14 @@ export async function streamLlamaCompletion(
               modelMetrics.timeToFirstToken = firstTokenTime - startTime;
             }
             responseText += data.token;
+            if(!voiceMode) {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+            }
             onProgress(responseText);
           }
         }
       );
       
-      const endTime = performance.now();
       modelMetrics.completionTokens = result.timings?.predicted_n
       modelMetrics.tokensPerSecond = result.timings?.predicted_per_second
       onComplete(modelMetrics, model, responseText);
@@ -78,7 +88,6 @@ export async function streamLlamaCompletion(
       });
       
       responseText = result.text;
-    //   const endTime = performance.now();
       modelMetrics.completionTokens = result.timings?.predicted_n
       modelMetrics.tokensPerSecond = result.timings?.predicted_per_second
       onProgress(responseText);
@@ -88,4 +97,22 @@ export async function streamLlamaCompletion(
     console.error('Error during Llama completion:', error);
     throw error;
   }
+}
+
+/**
+ * Generates message metadata for tracking and storage
+ */
+export function createMessageMetadata(isUser: boolean, model: Model): Pick<Message, 'id' | 'isUser' | 'model'> {
+  return {
+    id: generateUniqueId(),
+    isUser,
+    model
+  };
+}
+
+/**
+ * Generate a unique ID for messages and conversations
+ */
+export function generateUniqueId(): string {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }

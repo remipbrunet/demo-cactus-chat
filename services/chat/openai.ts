@@ -1,7 +1,7 @@
 import { getApiKey } from '../storage';
 import { ModelMetrics } from '../../utils/modelMetrics';
 import EventSource from 'react-native-sse';
-import { Message } from '../../components/ui/ChatMessage';
+import { Message } from '../../components/ui/chat/ChatMessage';
 import { ChatCompleteCallback, ChatProgressCallback } from './chat';
 import { Model } from '../models';
 

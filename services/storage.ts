@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Message } from '@/components/ui/ChatMessage';
-import { Model, ModelAvailableToDownload } from '@/services/models';
+import { Message } from '@/components/ui/chat/ChatMessage';
+import { InferenceHardware, Model, ModelAvailableToDownload } from '@/services/models';
 import * as FileSystem from 'expo-file-system';
 import { Provider } from '@/services/models';
 import { supabase } from '@/services/supabase';
@@ -12,7 +12,10 @@ const STORAGE_KEY = '@cactus_conversations';
 const LAST_MODEL_KEY = '@last_used_model';
 const DEVICE_ID_KEY = '@device_id';
 const TOKEN_GENERATION_LIMIT_KEY = '@token_generation_limit';
+const INFERENCE_HARDWARE_KEY = '@inference_hardware';
 const MODELS_AVAILABLE_TO_DOWNLOAD_KEY = '@models_available_to_download';
+const IS_REASONING_ENABLED_KEY = '@is_reasoning_enabled';
+const LANGUAGE_PREFERENCE_KEY = '@language_preference';
 
 export const getTokenGenerationLimit = async (): Promise<number> => {
   const limit = await AsyncStorage.getItem(TOKEN_GENERATION_LIMIT_KEY);
@@ -22,6 +25,25 @@ export const getTokenGenerationLimit = async (): Promise<number> => {
 export const saveTokenGenerationLimit = async (limit: number) => {
   await AsyncStorage.setItem(TOKEN_GENERATION_LIMIT_KEY, limit.toString());
 }
+
+export const getInferenceHardware = async (): Promise<InferenceHardware[]> => {
+  const hardware = await AsyncStorage.getItem(INFERENCE_HARDWARE_KEY);
+  return hardware ? JSON.parse(hardware) : ['cpu'];
+}
+
+export const saveInferenceHardware = async (hardware: InferenceHardware[]) => {
+  const jsonValue = JSON.stringify(hardware);
+  await AsyncStorage.setItem(INFERENCE_HARDWARE_KEY, jsonValue);
+}
+
+export const getIsReasoningEnabled = async (): Promise<boolean> => {
+  const enabled = await AsyncStorage.getItem(IS_REASONING_ENABLED_KEY);
+  return enabled ? enabled === 'true' : false
+}
+
+export const saveIsReasoningEnabled = async (enabled: boolean) => {
+  await AsyncStorage.setItem(IS_REASONING_ENABLED_KEY, enabled.toString());
+} 
 
 export const getModelDirectory = () => 
   Platform.OS === 'ios' 
@@ -169,22 +191,22 @@ export async function saveApiKey(provider: Provider, key: string): Promise<void>
   }
 }
 
-export async function getApiKey(provider: Provider): Promise<string | null> {
-  try {
-    return await AsyncStorage.getItem(fetchProviderKeyStoreName(provider));
-  } catch (error) {
-    console.error(`Error loading ${provider} key:`, error);
-    return null;
-  }
-}
+// export async function getApiKey(provider: Provider): Promise<string | null> {
+//   try {
+//     return await AsyncStorage.getItem(fetchProviderKeyStoreName(provider));
+//   } catch (error) {
+//     console.error(`Error loading ${provider} key:`, error);
+//     return null;
+//   }
+// }
 
-export async function deleteApiKey(provider: Provider): Promise<void> {
-  try {
-    await AsyncStorage.removeItem(fetchProviderKeyStoreName(provider));
-  } catch (error) {
-    console.error(`Error deleting ${provider} key:`, error);
-  }
-}
+// export async function deleteApiKey(provider: Provider): Promise<void> {
+//   try {
+//     await AsyncStorage.removeItem(fetchProviderKeyStoreName(provider));
+//   } catch (error) {
+//     console.error(`Error deleting ${provider} key:`, error);
+//   }
+// }
 
 export const storeLocalModel = (model: Model) => 
   AsyncStorage.setItem(`local_model_${model.value}`, JSON.stringify(model));
@@ -211,4 +233,12 @@ export const getModelsAvailableToDownload = async (): Promise<ModelAvailableToDo
 
 export const saveModelsAvailableToDownload = async (models: ModelAvailableToDownload[]) => {
   await AsyncStorage.setItem(MODELS_AVAILABLE_TO_DOWNLOAD_KEY, JSON.stringify(models));
+}
+
+export const getLanguagePreference = async (): Promise<string | null> => {
+  return await AsyncStorage.getItem(LANGUAGE_PREFERENCE_KEY);
+}
+
+export const saveLanguagePreference = async (language: string) => {
+  await AsyncStorage.setItem(LANGUAGE_PREFERENCE_KEY, language);
 }
