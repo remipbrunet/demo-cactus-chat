@@ -37,20 +37,20 @@ const MessageInputButton = memo(({
         return <Spinner size="small" />
     }
 
-    if (inputText.trim() === '') {
-        return (
-            <Button 
-                icon={<Mic size="$1.5"/>} 
-                onPress={async () => {
-                    await requestMicrophonePermission((_) => {});
-                    setVoiceMode(true);
-                }}
-                disabled={isVoiceDisabled}
-                opacity={isVoiceDisabled ? 0.25 : 1} // Use the passed disabled prop
-                chromeless
-            />
-        );
-    }
+    // if (inputText.trim() === '') {
+    //     return (
+    //         <Button 
+    //             icon={<Mic size="$1.5"/>} 
+    //             onPress={async () => {
+    //                 await requestMicrophonePermission((_) => {});
+    //                 setVoiceMode(true);
+    //             }}
+    //             disabled={isVoiceDisabled}
+    //             opacity={isVoiceDisabled ? 0.25 : 1} // Use the passed disabled prop
+    //             chromeless
+    //         />
+    //     );
+    // }
 
     // Default Send button
     return (
@@ -58,7 +58,7 @@ const MessageInputButton = memo(({
             <Button
                 icon={<Send size="$1.5"/>}
                 onPress={onSendPress}
-                disabled={isSendDisabled}
+                disabled={isSendDisabled || inputText.trim() === ''}
                 opacity={isSendDisabled ? 0.25 : 1} // Use the passed disabled prop
                 aria-label="Send Message"
                 chromeless

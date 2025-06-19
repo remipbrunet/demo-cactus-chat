@@ -1,5 +1,5 @@
 import { PermissionsAndroid, Platform } from 'react-native';
-import Voice, { SpeechRecognizedEvent, SpeechResultsEvent } from '@react-native-voice/voice';
+// import Voice, { SpeechRecognizedEvent, SpeechResultsEvent } from '@react-native-voice/voice';
 
 /**
  * Removes emojis from a string.

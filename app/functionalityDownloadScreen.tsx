@@ -4,12 +4,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { CactusFunctionalitySelection } from './functionalitySelectionScreen';
 import * as FileSystem from 'expo-file-system';
-import { Check, ShieldQuestion } from '@tamagui/lucide-icons';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Model } from '@/services/models';
 import { storeLocalModel } from '@/services/storage';
 import { useModelContext } from '@/contexts/modelContext';
 import { RegularText } from '@/components/ui/RegularText';
+import { getRootDirectory } from '@/services/storage';
 
 export default function FunctionalityDownloadScreen() {
     const { functionalitySelectionsString } = useLocalSearchParams()
@@ -17,7 +17,7 @@ export default function FunctionalityDownloadScreen() {
 
     const [downloads, setDownloads] = useState<{[key: string]: number}>({});
     const downloadCountRef = useRef(0);
-    const [overallProgress, setOverallProgress] = useState(0);
+    const [overallProgress, setOverallProgress] = useState<number>(0.00);
     const [isComplete, setIsComplete] = useState(false);
 
     const { refreshModels, setSelectedModel } = useModelContext();
@@ -33,11 +33,11 @@ export default function FunctionalityDownloadScreen() {
     const totalDownloads = allDownloads.length;
 
     useEffect(() => {
-        console.log(FileSystem.documentDirectory)
+        console.log(`Downloading to: ${getRootDirectory()}`)
         const downloadTasks: FileSystem.DownloadResumable[] = [];
         
         allDownloads.forEach(async ({ url, filename, folderName, modelName }) => {
-            const dirPath = `${FileSystem.documentDirectory}${folderName}`;
+            const dirPath = `${getRootDirectory()}${folderName}`;
             await FileSystem.makeDirectoryAsync(dirPath, { intermediates: true })
             const downloadPath = `${dirPath}/${filename}`;
           
@@ -50,7 +50,7 @@ export default function FunctionalityDownloadScreen() {
                   setDownloads(prev => {
                     const newDownloads = { ...prev, [url]: progressValue };
                     const total = Object.values(newDownloads).reduce((sum, p) => sum + p, 0) / totalDownloads;
-                    setOverallProgress(total * 100);
+                    setOverallProgress(parseFloat((total * 100).toFixed(2)));
                     return newDownloads;
                   });
                 }
@@ -110,7 +110,7 @@ export default function FunctionalityDownloadScreen() {
                 </Button>
             ) : (
                 <YStack width="100%">
-                    <Progress value={overallProgress} max={100} width="100%">
+                    <Progress value={Math.round(overallProgress)} max={100} width="100%">
                         <Progress.Indicator animation="bouncy" backgroundColor="$green10" />
                     </Progress>
                     <Button onPress={() => router.back()}>

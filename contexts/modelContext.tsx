@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState, useContext } from 'react';
+import { createContext, useEffect, useState, useContext, useRef } from 'react';
 import { Platform } from 'react-native';
 import { 
   Model, 
@@ -21,6 +21,7 @@ import {
 import { initLlama, LlamaContext, releaseAllLlama } from 'cactus-react-native';
 import { logModelLoadDiagnostics } from '@/services/diagnostics';
 import { generateUniqueId } from '@/services/chat/llama-local';
+import * as FileSystem from 'expo-file-system';
 
 interface LoadedContext {
   context: LlamaContext | null,
@@ -76,6 +77,8 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   const [conversationId, setConversationId] = useState<string>(generateUniqueId())
   const [modelsAvailableToDownload, setModelsAvailableToDownload] = useState<ModelAvailableToDownload[]>([]);
 
+  const reloadLock = useRef(false);
+
   function refreshModels() {
     setModelsVersion(modelsVersion + 1);
   }
@@ -90,10 +93,10 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
     getIsReasoningEnabled().then((enabled) => {
       setIsReasoningEnabled(enabled)
     })
-    getLocalModels().then((availableModels) => {
+    getLocalModels().then((fetchedAvailableModels) => {
       setAvailableModels(availableModels);
       getLastUsedModel().then((lastUsedModel) => {
-        setSelectedModel(availableModels.find(m => m.value === lastUsedModel) || availableModels[0]);
+        setSelectedModel(availableModels.find(m => m.value === lastUsedModel) || fetchedAvailableModels[0]);
       });
     });
     fetchModelsAvailableToDownload().then((models) => {
@@ -121,18 +124,26 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const reloadModelContext = async () => {
-      if (selectedModel){
+      if (selectedModel && !reloadLock.current){
+        console.log('inside the function')
         setIsContextLoading(true);
-        await releaseAllLlama();
+        reloadLock.current = true;
+        if (Platform.OS === 'ios'){
+          await releaseAllLlama();
+          console.log('released all llama')
+        } else console.log('skipping llama release on Android')
         const modelPath = getFullModelPath(selectedModel.meta?.fileName || '');
+        console.log(`Full model path: ${modelPath}`)
         const gpuLayers = Platform.OS === 'ios' && inferenceHardware.includes('gpu') ? 99 : 0
         const startTime = performance.now();
+        console.log(await FileSystem.getInfoAsync(modelPath))
         const context = await initLlama({
           model: modelPath,
           use_mlock: true,
           n_ctx: 2048,
           n_gpu_layers: gpuLayers
         });
+        console.log('initialized llama')
         const endTime = performance.now();
         logModelLoadDiagnostics({model: selectedModel.value, loadTime: endTime - startTime});
         setCactusContext({
@@ -142,10 +153,11 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
         })
         setIsContextLoading(false)
         saveLastUsedModel(selectedModel.value);
+        reloadLock.current = false;
       }
     }
     reloadModelContext()
-    console.log('reloading context!')
+    console.log('triggering reload of context!')
   }, [selectedModel, inferenceHardware])
 
   return (

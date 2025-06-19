@@ -2,7 +2,7 @@ import { Message } from '@/components/ui/chat/ChatMessage';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import { Model } from '../models';
 import { LlamaContext } from 'cactus-react-native';
-import * as Haptics from 'expo-haptics';
+// import * as Haptics from 'expo-haptics';
 
 export interface ChatProgressCallback {
   (text: string): void;
@@ -70,7 +70,7 @@ export async function streamLlamaCompletion(
             }
             responseText += data.token;
             if(!voiceMode) {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              // Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
             }
             onProgress(responseText);
           }

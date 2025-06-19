@@ -5,11 +5,10 @@ import { ModelProvider } from '@/contexts/modelContext';
 import '@/language/i18nextConfig'; // needed for language translation context
 import i18n from '@/language/i18nextConfig';
 import { useEffect } from 'react';
-// import { getLanguagePreference } from '@/services/storage';
 import { router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as FileSystem from 'expo-file-system';
-
+import { getModelDirectory } from '@/services/storage';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -19,7 +18,8 @@ export default function RootLayout() {
     async function prepareAndRedirect() {
       try {
         // we proxy onboarding completion using the existence of the local-models folder
-        const { exists: onboardingComplete } = await FileSystem.getInfoAsync(`${FileSystem.documentDirectory}local-models`)
+        // await FileSystem.deleteAsync(`${FileSystem.documentDirectory}local-models`)
+        const { exists: onboardingComplete } = await FileSystem.getInfoAsync(`${getModelDirectory()}`)
         if(onboardingComplete){
           router.push('/');            
         }else{

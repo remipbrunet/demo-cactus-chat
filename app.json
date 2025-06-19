@@ -28,7 +28,7 @@
         "backgroundColor": "#ffffff"
       },
       "icon": "./assets/images/bw-logo.png",
-      "package": "com.rshemetsubuser.myapp"
+      "package": "com.rshemetsubuserbrr.myapp"
     },
     "web": {
       "bundler": "metro",
@@ -45,8 +45,7 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ],
-      "@react-native-voice/voice"
+      ]
     ],
     "experiments": {
       "typedRoutes": true

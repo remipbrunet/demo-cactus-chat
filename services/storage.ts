@@ -45,10 +45,13 @@ export const saveIsReasoningEnabled = async (enabled: boolean) => {
   await AsyncStorage.setItem(IS_REASONING_ENABLED_KEY, enabled.toString());
 } 
 
-export const getModelDirectory = () => 
+export const getRootDirectory = () => 
   Platform.OS === 'ios' 
-    ? `${FileSystem.documentDirectory}local-models/`
-    : `${FileSystem.cacheDirectory}local-models/`;
+    ? `${FileSystem.documentDirectory}`
+    : `${FileSystem.cacheDirectory}`;
+
+export const getModelDirectory = () => 
+  `${getRootDirectory()}local-models/`;
 
 export const getFullModelPath = (fileName: string) => 
   `${getModelDirectory()}${fileName}`;
