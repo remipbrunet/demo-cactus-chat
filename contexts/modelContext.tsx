@@ -123,7 +123,10 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
     const reloadModelContext = async () => {
       if (selectedModel){
         setIsContextLoading(true);
-        await releaseAllLlama();
+        if (Platform.OS === 'ios'){
+          await releaseAllLlama();
+          console.log('released all llama')
+        } else console.log('skipping llama release on Android')
         const modelPath = getFullModelPath(selectedModel.meta?.fileName || '');
         const gpuLayers = Platform.OS === 'ios' && inferenceHardware.includes('gpu') ? 99 : 0
         const startTime = performance.now();
