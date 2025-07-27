@@ -46,9 +46,10 @@ export const saveIsReasoningEnabled = async (enabled: boolean) => {
 } 
 
 export const getModelDirectory = () => 
-  Platform.OS === 'ios' 
-    ? `${FileSystem.documentDirectory}local-models/`
-    : `${FileSystem.cacheDirectory}local-models/`;
+  `${FileSystem.documentDirectory}local-models/`;
+  // Platform.OS === 'ios' 
+  //   ? `${FileSystem.documentDirectory}local-models/`
+  //   : `${FileSystem.cacheDirectory}local-models/`;
 
 export const getFullModelPath = (fileName: string) => 
   `${getModelDirectory()}${fileName}`;

@@ -84,9 +84,10 @@ export async function streamLlamaCompletion(
       const result = await lm.completion(
         formattedMessages,
         {
-        n_predict: 1024,
-        stop: stopWords,
-      });
+          n_predict: 1024,
+          stop: stopWords,
+        }
+      );
       
       responseText = result.text;
       modelMetrics.completionTokens = result.timings?.predicted_n
