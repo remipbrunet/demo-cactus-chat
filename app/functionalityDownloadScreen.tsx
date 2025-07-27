@@ -50,7 +50,8 @@ export default function FunctionalityDownloadScreen() {
                   setDownloads(prev => {
                     const newDownloads = { ...prev, [url]: progressValue };
                     const total = Object.values(newDownloads).reduce((sum, p) => sum + p, 0) / totalDownloads;
-                    setOverallProgress(total * 100);
+                    // setOverallProgress(total * 100);
+                    setOverallProgress(parseFloat((total * 100).toFixed(2)));
                     return newDownloads;
                   });
                 }
@@ -110,7 +111,8 @@ export default function FunctionalityDownloadScreen() {
                 </Button>
             ) : (
                 <YStack width="100%">
-                    <Progress value={overallProgress} max={100} width="100%">
+                    {/* <Progress value={overallProgress} max={100} width="100%"> */}
+                    <Progress value={Math.round(overallProgress)} max={100} width="100%">
                         <Progress.Indicator animation="bouncy" backgroundColor="$green10" />
                     </Progress>
                     <Button onPress={() => router.back()}>

@@ -13,7 +13,7 @@ import { useModelContext } from '@/contexts/modelContext';
 import { logChatCompletionDiagnostics } from '@/services/diagnostics';
 import { MessageInput } from '@/components/ui/chat/MessageInput';
 import { Model } from '@/services/models';
-import { VoiceModeOverlay } from '@/components/VoiceModeScreen';
+// import { VoiceModeOverlay } from '@/components/VoiceModeScreen';
 import { streamLlamaCompletion, generateUniqueId } from '@/services/chat/llama-local';
 
 
@@ -215,12 +215,12 @@ export default function ChatScreen() {
             />
           </YStack>
         </KeyboardAvoidingView>
-        <VoiceModeOverlay
+        {/* <VoiceModeOverlay
           visible={voiceMode}
           onClose={() => setVoiceMode(false)}
           messages={messages}
           setMessages={setMessages}
-        />
+        /> */}
     </SafeAreaView>
   );
 }

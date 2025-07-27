@@ -3,7 +3,7 @@
     "name": "Cactus Chat",
     "slug": "my-app",
     "displayName": "Cactus Chat",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./assets/images/bw-logo.png",
     "scheme": "myapp",
@@ -46,7 +46,6 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "@react-native-voice/voice"
     ],
     "experiments": {
       "typedRoutes": true

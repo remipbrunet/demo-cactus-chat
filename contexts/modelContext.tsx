@@ -18,12 +18,12 @@ import {
   saveIsReasoningEnabled,
   getFullModelPath
 } from '@/services/storage';
-import { releaseAllLlama, CactusLM } from 'cactus-react-native';
+import { releaseAllLlama, LlamaContext, initLlama } from 'cactus-react-native';
 import { logModelLoadDiagnostics } from '@/services/diagnostics';
 import { generateUniqueId } from '@/services/chat/llama-local';
 
 interface LoadedContext {
-  lm: CactusLM | null,
+  lm: LlamaContext | null,
   model: Model | null,
   inferenceHardware: InferenceHardware[]
 }
@@ -127,22 +127,25 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
         const modelPath = getFullModelPath(selectedModel.meta?.fileName || '');
         const gpuLayers = Platform.OS === 'ios' && inferenceHardware.includes('gpu') ? 99 : 0
         const startTime = performance.now();
-        // const context = await initLlama({
-        //   model: modelPath,
-        //   use_mlock: true,
-        //   n_ctx: 2048,
-        //   n_gpu_layers: gpuLayers
-        // });
-        const { lm } = await CactusLM.init({
+        const context = await initLlama({
           model: modelPath,
           use_mlock: true,
           n_ctx: 2048,
-          n_gpu_layers: gpuLayers
+          n_gpu_layers: gpuLayers,
         });
+        // const lm = await CactusLM.init({
+        //   model: modelPath,
+        //   use_mlock: true,
+        //   n_ctx: 2048,
+        //   n_batch: 32,   
+        //   n_gpu_layers: gpuLayers,
+        //   n_threads: 4,        
+        // });
         const endTime = performance.now();
         logModelLoadDiagnostics({model: selectedModel.value, loadTime: endTime - startTime});
         setCactusContext({
-          lm: lm,
+          // lm: lm,
+          lm: context,
           model: selectedModel,
           inferenceHardware: inferenceHardware
         })

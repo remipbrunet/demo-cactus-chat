@@ -1,5 +1,5 @@
 import { Spinner, YStack, Button, Input, XStack } from "tamagui"
-import { Send, Pause, Mic } from "@tamagui/lucide-icons";
+import { Send, Pause } from "@tamagui/lucide-icons";
 import { Model } from "@/services/models";
 import { useState, memo} from "react";
 import { requestMicrophonePermission } from "@/utils/voiceFunctions";
@@ -37,20 +37,20 @@ const MessageInputButton = memo(({
         return <Spinner size="small" />
     }
 
-    if (inputText.trim() === '') {
-        return (
-            <Button 
-                icon={<Mic size="$1.5"/>} 
-                onPress={async () => {
-                    await requestMicrophonePermission((_) => {});
-                    setVoiceMode(true);
-                }}
-                disabled={isVoiceDisabled}
-                opacity={isVoiceDisabled ? 0.25 : 1} // Use the passed disabled prop
-                chromeless
-            />
-        );
-    }
+    // if (inputText.trim() === '') {
+    //     return (
+    //         <Button 
+    //             icon={<Mic size="$1.5"/>} 
+    //             onPress={async () => {
+    //                 await requestMicrophonePermission((_) => {});
+    //                 setVoiceMode(true);
+    //             }}
+    //             disabled={isVoiceDisabled}
+    //             opacity={isVoiceDisabled ? 0.25 : 1} // Use the passed disabled prop
+    //             chromeless
+    //         />
+    //     );
+    // }
 
     // Default Send button
     return (
@@ -58,7 +58,7 @@ const MessageInputButton = memo(({
             <Button
                 icon={<Send size="$1.5"/>}
                 onPress={onSendPress}
-                disabled={isSendDisabled}
+                disabled={isSendDisabled || inputText.trim() === ''}
                 opacity={isSendDisabled ? 0.25 : 1} // Use the passed disabled prop
                 aria-label="Send Message"
                 chromeless
@@ -85,7 +85,7 @@ function MessageInputComponent({ sendMessage, isStreaming, selectedModel, setVoi
 
     const handlePause = () => {
         console.log('pause!')
-        cactusContext.context?.stopCompletion();
+        cactusContext.lm?.stopCompletion();
     }
 
     return (
