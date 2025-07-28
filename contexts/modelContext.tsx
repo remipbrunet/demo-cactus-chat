@@ -135,19 +135,13 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
         console.log(`Full model path: ${modelPath}`)
         const gpuLayers = Platform.OS === 'ios' && inferenceHardware.includes('gpu') ? 99 : 0
         const startTime = performance.now();
-        // const context = await initLlama({
-        //   model: modelPath,
-        //   use_mlock: true,
-        //   n_ctx: 2048,
-        //   n_gpu_layers: gpuLayers,
-        // });
         const { lm, error } = await CactusLM.init({
           model: modelPath,
           use_mlock: true,
           n_ctx: 2048,
           n_batch: 32,   
           n_gpu_layers: gpuLayers,
-          n_threads: 4,        
+          // n_threads: 4,        
         });
         if (error) console.log('error', error)
         console.log('initialized llama')
@@ -155,7 +149,6 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
         logModelLoadDiagnostics({model: selectedModel.value, loadTime: endTime - startTime});
         setCactusContext({
           lm: lm,
-          // lm: context,
           model: selectedModel,
           inferenceHardware: inferenceHardware
         })
