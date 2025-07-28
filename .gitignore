@@ -19,3 +19,5 @@ package-lock.json
 yarn.lock
 devices.json
 .cursor
+
+.projectId.json
