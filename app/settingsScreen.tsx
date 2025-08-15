@@ -196,7 +196,7 @@ export default function SettingsScreen() {
                             borderWidth={1}
                             borderRadius="$4"
                             multiline
-                            lineHeight="$1"
+                            lineHeight={16}
                             value={isEditingPrompt ? tempSystemPrompt : systemPrompt}
                             onChangeText={isEditingPrompt ? setTempSystemPrompt : undefined}
                             disabled={!isEditingPrompt}
@@ -296,6 +296,7 @@ export default function SettingsScreen() {
                                     fontSize="$3"
                                     padding="$2.5"
                                     fontWeight={300}
+                                    lineHeight={16}
                                     backgroundColor={"transparent"}
                                     borderWidth={0}
                                     value={modelUrl}
