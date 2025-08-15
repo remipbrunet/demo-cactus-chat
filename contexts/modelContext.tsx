@@ -16,7 +16,9 @@ import {
   saveInferenceHardware, 
   getIsReasoningEnabled, 
   saveIsReasoningEnabled,
-  getFullModelPath
+  getFullModelPath,
+  getSystemPrompt,
+  saveSystemPrompt
 } from '@/services/storage';
 import { releaseAllLlama, CactusLM } from 'cactus-react-native';
 import { logModelLoadDiagnostics } from '@/services/diagnostics';
@@ -44,6 +46,8 @@ interface ModelContextType {
     conversationId: string;
     setConversationId: (id: string) => void;
     modelsAvailableToDownload: ModelAvailableToDownload[];
+    systemPrompt: string;
+    setSystemPrompt: (prompt: string) => void;
 }
 
 const ModelContext = createContext<ModelContextType>({
@@ -62,6 +66,8 @@ const ModelContext = createContext<ModelContextType>({
     conversationId: generateUniqueId(),
     setConversationId: () => {},
     modelsAvailableToDownload: [],
+    systemPrompt: '',
+    setSystemPrompt: () => {},
 });
 
 export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
@@ -75,6 +81,7 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   const [isReasoningEnabled, setIsReasoningEnabled] = useState<boolean>(true);
   const [conversationId, setConversationId] = useState<string>(generateUniqueId())
   const [modelsAvailableToDownload, setModelsAvailableToDownload] = useState<ModelAvailableToDownload[]>([]);
+  const [systemPrompt, setSystemPrompt] = useState<string>('');
 
   const reloadLock = useRef(false);
 
@@ -98,6 +105,9 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
         setSelectedModel(availableModels.find(m => m.value === lastUsedModel) || availableModels[0]);
       });
     });
+    getSystemPrompt().then((prompt) => {
+      setSystemPrompt(prompt);
+    });
     fetchModelsAvailableToDownload().then((models) => {
       setModelsAvailableToDownload(models);
     });
@@ -114,6 +124,10 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     saveIsReasoningEnabled(isReasoningEnabled)
   }, [isReasoningEnabled])
+
+  useEffect(() => {
+    saveSystemPrompt(systemPrompt)
+  }, [systemPrompt])
 
   useEffect(() => {
     getLocalModels().then((models) => {
@@ -177,7 +191,9 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
     setIsReasoningEnabled, 
     conversationId,
     setConversationId,
-    modelsAvailableToDownload 
+    modelsAvailableToDownload,
+    systemPrompt,
+    setSystemPrompt
   }}>
     {children}
   </ModelContext.Provider>

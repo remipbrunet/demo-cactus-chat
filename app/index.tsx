@@ -29,7 +29,8 @@ export default function ChatScreen() {
     tokenGenerationLimit, 
     isReasoningEnabled, 
     cactusContext, 
-    conversationId 
+    conversationId,
+    systemPrompt
   } = useModelContext();
   
   // Single ref for streaming updates
@@ -148,9 +149,11 @@ export default function ChatScreen() {
         selectedModel,
         chatCallbackPartialMessage,
         chatCallbackCompleteMessage,
-        true,
+        true, // streaming
         tokenGenerationLimit,
         isReasoningEnabled,
+        false, // voiceMode
+        systemPrompt
       );      
     } catch (error) {
       console.error('Error in chat:', error);

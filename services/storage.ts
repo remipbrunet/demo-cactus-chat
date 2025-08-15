@@ -16,6 +16,7 @@ const INFERENCE_HARDWARE_KEY = '@inference_hardware';
 const MODELS_AVAILABLE_TO_DOWNLOAD_KEY = '@models_available_to_download';
 const IS_REASONING_ENABLED_KEY = '@is_reasoning_enabled';
 const LANGUAGE_PREFERENCE_KEY = '@language_preference';
+const SYSTEM_PROMPT_KEY = '@system_prompt';
 
 export const getTokenGenerationLimit = async (): Promise<number> => {
   const limit = await AsyncStorage.getItem(TOKEN_GENERATION_LIMIT_KEY);
@@ -192,22 +193,14 @@ export async function saveApiKey(provider: Provider, key: string): Promise<void>
   }
 }
 
-// export async function getApiKey(provider: Provider): Promise<string | null> {
-//   try {
-//     return await AsyncStorage.getItem(fetchProviderKeyStoreName(provider));
-//   } catch (error) {
-//     console.error(`Error loading ${provider} key:`, error);
-//     return null;
-//   }
-// }
+export async function getSystemPrompt(): Promise<string> {
+  const prompt = await AsyncStorage.getItem(SYSTEM_PROMPT_KEY);
+  return prompt || 'You are Cactus, a very capable AI assistant running offline on a smartphone.'
+}
 
-// export async function deleteApiKey(provider: Provider): Promise<void> {
-//   try {
-//     await AsyncStorage.removeItem(fetchProviderKeyStoreName(provider));
-//   } catch (error) {
-//     console.error(`Error deleting ${provider} key:`, error);
-//   }
-// }
+export async function saveSystemPrompt(prompt: string): Promise<void> {
+  await AsyncStorage.setItem(SYSTEM_PROMPT_KEY, prompt);
+}
 
 export const storeLocalModel = (model: Model) => 
   AsyncStorage.setItem(`local_model_${model.value}`, JSON.stringify(model));

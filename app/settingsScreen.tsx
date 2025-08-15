@@ -1,5 +1,5 @@
 import { ScrollView, Slider, Text, XStack, YStack, ToggleGroup, Switch, Button, Input, Progress, View, Anchor } from 'tamagui';
-import { Zap, Cpu, Brain, HardDrive, Download, AlertTriangle } from '@tamagui/lucide-icons';
+import { Zap, Cpu, Brain, HardDrive, Download, AlertTriangle, FileText, Edit3, Check, X } from '@tamagui/lucide-icons';
 import { useState } from 'react';
 import { Alert } from 'react-native';
 
@@ -21,7 +21,7 @@ function TextWithIcon({
     text,
 }: TextWithIconProps) {
     return (
-        <XStack width="100%" alignItems='center' gap="$2">
+        <XStack flex={1} alignItems='center' gap="$2">
             <Icon size={16}/>
             <Text fontSize="$4" fontWeight="400" textAlign='left'>{text}</Text>
         </XStack>
@@ -39,12 +39,16 @@ export default function SettingsScreen() {
         modelsAvailableToDownload,
         availableModels,
         selectedModel,
-        refreshModels
+        refreshModels,
+        systemPrompt,
+        setSystemPrompt
     } = useModelContext();
     const [ downloadInProgress, setDownloadInProgress ] = useState(false);
     const [ downloadProgress, setDownloadProgress ] = useState(0);
     const [ errorMessage, setErrorMessage ] = useState('');
     const [ modelUrl, setModelUrl ] = useState('');
+    const [ tempSystemPrompt, setTempSystemPrompt ] = useState('');
+    const [ isEditingPrompt, setIsEditingPrompt ] = useState(false);
 
     const handleModelDownload = async (urlOverride?: string) => {
         setErrorMessage('');
@@ -108,6 +112,21 @@ export default function SettingsScreen() {
         );
       };
 
+    const handleEditPrompt = () => {
+        setTempSystemPrompt(systemPrompt);
+        setIsEditingPrompt(true);
+    };
+
+    const handleSavePrompt = () => {
+        setSystemPrompt(tempSystemPrompt);
+        setIsEditingPrompt(false);
+    };
+
+    const handleCancelPrompt = () => {
+        setTempSystemPrompt('');
+        setIsEditingPrompt(false);
+    };
+
     return (
         <OnboardingScreenLayout>
             <PageHeader 
@@ -152,6 +171,64 @@ export default function SettingsScreen() {
                             </Switch>
                         </XStack>
                         <RegularText>Slower, more thoughtful responses from reasoning-enabled models.</RegularText>
+                    </YStack>
+                    <YStack gap="$2">
+                        <XStack alignItems="center" justifyContent="space-between">
+                            <TextWithIcon Icon={FileText} text="System prompt"/>
+                            {!isEditingPrompt && (
+                                <Button
+                                    size="$2"
+                                    chromeless
+                                    icon={<Edit3 size={16}/>}
+                                    onPress={handleEditPrompt}
+                                >
+                                    <RegularText fontSize="$3">Edit</RegularText>
+                                </Button>
+                            )}
+                        </XStack>
+                        <Input
+                            placeholder="Enter custom system prompt..."
+                            fontSize="$3"
+                            padding="$2.5"
+                            fontWeight={300}
+                            backgroundColor={isEditingPrompt ? "$gray1" : "$gray2"}
+                            borderColor={isEditingPrompt ? "black" : "$gray6"}
+                            borderWidth={1}
+                            borderRadius="$4"
+                            multiline
+                            lineHeight="$1"
+                            value={isEditingPrompt ? tempSystemPrompt : systemPrompt}
+                            onChangeText={isEditingPrompt ? setTempSystemPrompt : undefined}
+                            disabled={!isEditingPrompt}
+                            opacity={isEditingPrompt ? 1 : 0.8}
+                        />
+                        {isEditingPrompt && (
+                            <XStack gap="$2">
+                                <Button
+                                    flex={1}
+                                    size="$3"
+                                    backgroundColor="black"
+                                    borderRadius="$4"
+                                    onPress={handleSavePrompt}
+                                    icon={<Check size={16} color="white"/>}
+                                >
+                                    <RegularText color="white">Save Changes</RegularText>
+                                </Button>
+                                <Button
+                                    flex={1}
+                                    size="$3"
+                                    backgroundColor="$gray1"
+                                    borderColor="$gray6"
+                                    borderWidth={1}
+                                    borderRadius="$4"
+                                    onPress={handleCancelPrompt}
+                                    icon={<X size={16}/>}
+                                >
+                                    <RegularText>Cancel</RegularText>
+                                </Button>
+                            </XStack>
+                        )}
+                        <RegularText>Define how the AI should behave and respond to your requests.</RegularText>
                     </YStack>
                     <YStack gap="$2">
                         <TextWithIcon Icon={HardDrive} text="Local models"/>

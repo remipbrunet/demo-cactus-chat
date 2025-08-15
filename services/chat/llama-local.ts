@@ -21,7 +21,8 @@ export async function streamLlamaCompletion(
   streaming: boolean = true,
   maxTokens: number,
   isReasoningEnabled: boolean,
-  voiceMode?: boolean
+  voiceMode?: boolean,
+  systemPrompt?: string
 ) {
   try {
     console.log('Ensuring Llama context...', new Date().toISOString());
@@ -34,10 +35,12 @@ export async function streamLlamaCompletion(
                        '<|im_end|>', '<|EOT|>', '<|END_OF_TURN_TOKEN|>', 
                        '<|end_of_turn|>', '<|endoftext|>', '<end_of_turn>', '<|end_of_sentence|>'];
     
+    const voiceModePromptAddition = voiceMode ? 'Keep your messages VERY short. One-two sentences max.' : '';
+
     const formattedMessages = [
       {
         role: 'system',
-        content: `You are Cactus, a very capable AI assistant running offline on a smartphone. ${voiceMode ? 'Keep your messages VERY short. One-two sentences max.' : ''}`
+        content: `${systemPrompt} ${voiceModePromptAddition}`
       },
       ...messages.map(msg => ({
         role: msg.isUser ? 'user' : 'assistant',
@@ -54,6 +57,8 @@ export async function streamLlamaCompletion(
       completionTokens: 0,
       tokensPerSecond: 0
     };
+
+    console.log('Beginning completion with the system prompt:', systemPrompt);
     
     if (streaming) {
       const result = await lm.completion(

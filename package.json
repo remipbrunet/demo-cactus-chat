@@ -31,11 +31,7 @@
     "@tamagui/shorthands": "^1.125.33",
     "@tamagui/themes": "^1.125.33",
     "@tamagui/web": "^1.125.33",
-<<<<<<< HEAD
-    "cactus-react-native": "0.2.5",
-=======
     "cactus-react-native": "^0.2.7",
->>>>>>> main
     "expo": "~52.0.43",
     "expo-blur": "~14.0.3",
     "expo-constants": "~17.0.8",
