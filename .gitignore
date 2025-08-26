@@ -21,3 +21,14 @@ devices.json
 .cursor
 
 .projectId.json
+# Serena AI assistant files
+.serena/
+
+# Build and test logs
+metro-build.log
+quick-test-logs.txt
+*.log
+
+# Test output
+test-output/
+test-results/

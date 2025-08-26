@@ -1,0 +1,88 @@
+---
+appId: com.rshemetsubuser.myapp
+---
+
+# MCP Debug Loop - Automated bug detection and reporting
+# This test runs multiple cycles to catch intermittent issues
+
+- launchApp
+- assertVisible: "Cactus Chat"
+
+# Repeat the test cycle multiple times to catch intermittent bugs
+- repeat:
+    times: 3
+    commands:
+      - echo: "Starting MCP test cycle ${testIndex}"
+      
+      # Navigate to MCP Settings
+      - tapOn: 
+          id: "gear-button"
+          timeout: 5000
+      - waitForAnimationToEnd
+      - tapOn: "MCP Servers"
+      - waitForAnimationToEnd
+      
+      # Check Microsoft Docs server status
+      - assertVisible: "Microsoft Docs"
+      
+      # If server is disconnected, enable it
+      - runFlow:
+          when:
+            visible: "Disconnected"
+          commands:
+            - echo: "Server disconnected, attempting to enable"
+            - tapOn: "Microsoft Docs"
+            - waitForAnimationToEnd
+            - tapOn: "Enable"
+            - waitForAnimationToEnd:
+                timeout: 15000
+      
+      # Check for connection errors
+      - runFlow:
+          when:
+            visible: 
+              text: "Error"
+          commands:
+            - echo: "ERROR DETECTED: Connection failed"
+            - takeScreenshot: "mcp-error-${testIndex}.png"
+            - tapOn: "Retry"
+            - waitForAnimationToEnd:
+                timeout: 10000
+      
+      # Verify successful connection
+      - runFlow:
+          when:
+            visible: "Connected"
+          commands:
+            - echo: "SUCCESS: Server connected"
+            - takeScreenshot: "mcp-success-${testIndex}.png"
+      
+      # Go back to chat and test functionality
+      - tapOn: "Back"
+      - tapOn: "Back"
+      - waitForAnimationToEnd
+      
+      # Test with different queries to stress test
+      - tapOn: "Ask me anything"
+      - inputText: "What is Azure App Service?"
+      - tapOn: "Send"
+      - waitForAnimationToEnd:
+          timeout: 30000
+      
+      # Check for RAG query failed error
+      - runFlow:
+          when:
+            visible: "RAG query failed"
+          commands:
+            - echo: "BUG DETECTED: RAG query failed error"
+            - takeScreenshot: "rag-error-${testIndex}.png"
+      
+      # Check for successful response
+      - runFlow:
+          when:
+            visible: "Azure App Service"
+          commands:
+            - echo: "SUCCESS: Got response with Azure context"
+      
+      - waitForAnimationToEnd:
+          timeout: 2000

@@ -1,0 +1,61 @@
+---
+appId: com.rshemetsubuser.myapp
+---
+
+# Automated MCP Server Testing Flow
+# Tests: launch app -> settings -> MCP servers -> enable Microsoft server -> test functionality
+
+- launchApp
+- assertVisible: "Cactus Chat" # Verify app launched
+
+# Navigate to Settings (gear icon)
+- tapOn: 
+    id: "gear-button"  # You may need to add testID="gear-button" to the gear button
+- assertVisible: "Settings"
+
+# Navigate to MCP Servers
+- tapOn: "MCP Servers"
+- assertVisible: "MCP Servers"
+- assertVisible: "Microsoft Docs"
+
+# Enable Microsoft Docs server
+- tapOn: 
+    text: "Microsoft Docs"
+    index: 0
+- waitForAnimationToEnd
+- tapOn:
+    text: "Enable"  # Or toggle switch
+- waitForAnimationToEnd: 
+    timeout: 10000  # Wait up to 10 seconds for connection
+
+# Verify server is enabled/connected
+- assertVisible:
+    text: "Connected"
+    timeout: 15000
+
+# Go back to chat
+- tapOn: "Back"
+- tapOn: "Back"
+- assertVisible: "Ask me anything"  # Chat input placeholder
+
+# Test MCP functionality with a Microsoft-specific query
+- tapOn: "Ask me anything"
+- inputText: "How do I set up Azure Functions?"
+- tapOn: "Send"
+
+# Wait for response and verify it includes MCP context
+- waitForAnimationToEnd:
+    timeout: 30000  # Wait up to 30 seconds for AI response
+
+# Verify response contains Microsoft documentation context
+- assertVisible:
+    text: "Azure Functions"
+    timeout: 5000
+
+# Optional: Check for RAG context indicators
+- assertVisible:
+    text: "Sources:"  # If your app shows source attribution
+    optional: true
+
+# Test completed successfully
+- echo: "MCP Server test completed successfully"

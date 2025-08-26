@@ -1,0 +1,57 @@
+---
+appId: com.rshemetsubuser.myapp
+---
+
+# Quick MCP Test - Fast validation of current fix
+- launchApp
+- assertVisible: "Cactus Chat"
+
+# Check if we can access settings
+- tapOn: 
+    point: "90%,10%"  # Top-right corner where gear icon typically is
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Look for MCP Servers option  
+- runFlow:
+    when:
+      visible: "MCP Servers"
+    commands:
+      - echo: "SUCCESS: Found MCP Servers option"
+      - tapOn: "MCP Servers"
+      - waitForAnimationToEnd
+      
+      # Check Microsoft Docs server
+      - assertVisible: "Microsoft Docs"
+      - echo: "SUCCESS: Microsoft Docs server visible"
+      
+      # Check current status
+      - runFlow:
+          when:
+            visible: "Connected"
+          commands:
+            - echo: "SUCCESS: Server already connected"
+            - takeScreenshot: "mcp-already-connected.png"
+      
+      - runFlow:
+          when:
+            visible: "Disconnected"
+          commands:
+            - echo: "INFO: Server disconnected, testing enable"
+            - tapOn: "Microsoft Docs"
+            - waitForAnimationToEnd
+            - takeScreenshot: "mcp-enable-attempt.png"
+
+# Go back to main screen regardless
+- tapOn: 
+    point: "5%,10%"  # Back button area
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: "Settings"
+    commands:
+      - tapOn: 
+          point: "5%,10%"  # Back button again
+      - waitForAnimationToEnd
+
+- echo: "Quick MCP test completed"
