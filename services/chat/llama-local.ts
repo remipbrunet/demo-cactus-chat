@@ -1,7 +1,9 @@
 import { Message } from '@/components/ui/chat/ChatMessage';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import { Model } from '../models';
-import { CactusLM } from 'cactus-react-native';
+import { CactusAgent } from 'cactus-react-native';
+import { RAGService } from '../rag';
+import { ChatOptions } from './_chat';
 // import * as Haptics from 'expo-haptics';
 
 export interface ChatProgressCallback {
@@ -13,7 +15,7 @@ export interface ChatCompleteCallback {
 }
 
 export async function streamLlamaCompletion(
-  lm: CactusLM | null,
+  lm: CactusAgent | null,
   messages: Message[],
   model: Model,
   onProgress: ChatProgressCallback,
@@ -22,7 +24,9 @@ export async function streamLlamaCompletion(
   maxTokens: number,
   isReasoningEnabled: boolean,
   voiceMode?: boolean,
-  systemPrompt?: string
+  systemPrompt?: string,
+  ragService?: RAGService,
+  options?: ChatOptions
 ) {
   try {
     console.log('Ensuring Llama context...', new Date().toISOString());
@@ -37,13 +41,40 @@ export async function streamLlamaCompletion(
     
     const voiceModePromptAddition = voiceMode ? 'Keep your messages VERY short. One-two sentences max.' : '';
 
+    // Enhanced system prompt with RAG context if available
+    let enhancedSystemPrompt = `${systemPrompt} ${voiceModePromptAddition}`;
+    
+    if (ragService && options?.enableRAG && options?.conversationId) {
+      try {
+        console.log('Integrating RAG enhancement...');
+        const ragResult = await ragService.enhancedQuery(
+          messages[messages.length - 1]?.text || '',
+          options.conversationId,
+          messages,
+          {
+            enableRAG: true,
+            maxResults: 5,
+            includeHistory: true,
+            maxTokens: Math.floor(maxTokens * 0.4), // Reserve 40% of tokens for context
+          }
+        );
+        
+        if (ragResult.metadata.ragEnabled) {
+          enhancedSystemPrompt = ragResult.systemPrompt;
+          console.log(`RAG context added: ${ragResult.metadata.chunksUsed} chunks from ${ragResult.metadata.sources.length} sources`);
+        }
+      } catch (ragError) {
+        console.warn('RAG enhancement failed, continuing without:', ragError);
+      }
+    }
+
     const formattedMessages = [
       {
-        role: 'system',
-        content: `${systemPrompt} ${voiceModePromptAddition}`
+        role: 'system' as const,
+        content: enhancedSystemPrompt
       },
       ...messages.map(msg => ({
-        role: msg.isUser ? 'user' : 'assistant',
+        role: msg.isUser ? 'user' as const : 'assistant' as const,
         content: msg.text
       }))
     ];

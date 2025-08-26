@@ -20,12 +20,12 @@ import {
   getSystemPrompt,
   saveSystemPrompt
 } from '@/services/storage';
-import { releaseAllLlama, CactusLM } from 'cactus-react-native';
+import { releaseAllLlama, CactusAgent } from 'cactus-react-native';
 import { logModelLoadDiagnostics } from '@/services/diagnostics';
 import { generateUniqueId } from '@/services/chat/llama-local';
 
 interface LoadedContext {
-  lm: CactusLM | null,
+  lm: CactusAgent | null,
   model: Model | null,
   inferenceHardware: InferenceHardware[]
 }
@@ -82,6 +82,7 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
   const [conversationId, setConversationId] = useState<string>(generateUniqueId())
   const [modelsAvailableToDownload, setModelsAvailableToDownload] = useState<ModelAvailableToDownload[]>([]);
   const [systemPrompt, setSystemPrompt] = useState<string>('');
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
   const reloadLock = useRef(false);
 
@@ -94,15 +95,19 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
       setTokenGenerationLimit(limit);
     });
     getInferenceHardware().then((hardware) => {
+      console.log(`ModelContext: Loading inference hardware from storage: ${hardware.join(',')}`);
       setInferenceHardware(hardware)
     });
     getIsReasoningEnabled().then((enabled) => {
       setIsReasoningEnabled(enabled)
     })
     getLocalModels().then((availableModels) => {
+      console.log(`ModelContext: Loading ${availableModels.length} models from storage`);
       setAvailableModels(availableModels);
       getLastUsedModel().then((lastUsedModel) => {
-        setSelectedModel(availableModels.find(m => m.value === lastUsedModel) || availableModels[0]);
+        const selectedModel = availableModels.find(m => m.value === lastUsedModel) || availableModels[0];
+        console.log(`ModelContext: Setting selected model to: ${selectedModel?.value}`);
+        setSelectedModel(selectedModel);
       });
     });
     getSystemPrompt().then((prompt) => {
@@ -110,6 +115,22 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
     });
     fetchModelsAvailableToDownload().then((models) => {
       setModelsAvailableToDownload(models);
+    });
+
+    // Set initialization complete after all async operations
+    Promise.all([
+      getTokenGenerationLimit(),
+      getInferenceHardware(),
+      getIsReasoningEnabled(),
+      getLocalModels().then(models => getLastUsedModel().then(lastUsed => ({ models, lastUsed }))),
+      getSystemPrompt(),
+      fetchModelsAvailableToDownload()
+    ]).then(() => {
+      console.log('ModelContext: All initialization complete');
+      setIsInitialized(true);
+    }).catch(error => {
+      console.error('ModelContext: Initialization error:', error);
+      setIsInitialized(true); // Still mark as initialized to prevent hanging
     });
   }, []);
 
@@ -137,8 +158,9 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const reloadModelContext = async () => {
-      if (selectedModel && !reloadLock.current){
-        console.log('inside the function')
+      // Only reload after initialization is complete and avoid multiple reloads
+      if (selectedModel && !reloadLock.current && isInitialized){
+        console.log(`ModelContext: Reloading context for model ${selectedModel.value}, hardware: ${inferenceHardware.join(',')}`)
         setIsContextLoading(true);
         reloadLock.current = true;
         if (Platform.OS === 'ios'){
@@ -149,7 +171,7 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
         console.log(`Full model path: ${modelPath}`)
         const gpuLayers = Platform.OS === 'ios' && inferenceHardware.includes('gpu') ? 99 : 0
         const startTime = performance.now();
-        const { lm, error } = await CactusLM.init({
+        const { agent, error } = await CactusAgent.init({
           model: modelPath,
           use_mlock: true,
           n_ctx: 2048,
@@ -162,7 +184,7 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
         const endTime = performance.now();
         logModelLoadDiagnostics({model: selectedModel.value, loadTime: endTime - startTime});
         setCactusContext({
-          lm: lm,
+          lm: agent,
           model: selectedModel,
           inferenceHardware: inferenceHardware
         })
@@ -173,7 +195,7 @@ export const ModelProvider = ({ children }: { children: React.ReactNode }) => {
     }
     reloadModelContext()
     console.log('triggering reload of context!')
-  }, [selectedModel, inferenceHardware])
+  }, [selectedModel, inferenceHardware, isInitialized])
 
   return (
   <ModelContext.Provider value={{ 

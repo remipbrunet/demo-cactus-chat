@@ -18,6 +18,8 @@ export interface ChatOptions {
   streaming?: boolean;
   voiceMode?: boolean; // only used by Llama local
   isReasoningEnabled?: boolean;
+  enableRAG?: boolean;
+  conversationId?: string;
 }
 
 /**
@@ -29,7 +31,10 @@ export async function sendChatMessage(
   onProgress: ChatProgressCallback,
   onComplete: ChatCompleteCallback,
   options: ChatOptions = { streaming: true, voiceMode: false },
-  maxTokens: number
+  maxTokens: number,
+  lm?: any, // CactusAgent instance for Cactus provider
+  systemPrompt?: string,
+  ragService?: any // RAGService instance for enhanced context
 ): Promise<void> {
   try {
     // switch (model.provider) {
@@ -65,13 +70,18 @@ export async function sendChatMessage(
         
     //   case 'Cactus':
       return await streamLlamaCompletion(
+        lm,
         messages, 
         model, 
         onProgress, 
         onComplete, 
         options.streaming,
         maxTokens,
-        options.voiceMode
+        options.isReasoningEnabled || false,
+        options.voiceMode,
+        systemPrompt,
+        ragService,
+        options
       );
         
       // default:

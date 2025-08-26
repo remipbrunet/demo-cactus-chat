@@ -1,5 +1,5 @@
 import { ScrollView, Slider, Text, XStack, YStack, ToggleGroup, Switch, Button, Input, Progress, View, Anchor } from 'tamagui';
-import { Zap, Cpu, Brain, HardDrive, Download, AlertTriangle, FileText, Edit3, Check, X } from '@tamagui/lucide-icons';
+import { Zap, Cpu, Brain, HardDrive, Download, AlertTriangle, FileText, Edit3, Check, X, Server, Database, ChevronRight } from '@tamagui/lucide-icons';
 import { useState } from 'react';
 import { Alert } from 'react-native';
 
@@ -10,6 +10,8 @@ import { RegularText } from '@/components/ui/RegularText';
 import { downloadModel, extractModelNameFromUrl, validateModelUrl } from '@/utils/modelUtils'
 import { ModelListItem } from '@/components/ui/settings/ModelListItem'
 import { removeLocalModel } from '@/services/storage';
+import { router } from 'expo-router';
+import { MCPConnectionIndicator } from '@/components/ui/mcp/MCPConnectionIndicator';
 
 interface TextWithIconProps {
     Icon: React.ElementType,
@@ -49,6 +51,14 @@ export default function SettingsScreen() {
     const [ modelUrl, setModelUrl ] = useState('');
     const [ tempSystemPrompt, setTempSystemPrompt ] = useState('');
     const [ isEditingPrompt, setIsEditingPrompt ] = useState(false);
+
+    // Mock MCP/RAG status - replace with actual service integration
+    const [mcpStatus] = useState({
+        serverCount: 2,
+        connectedCount: 1,
+        errorCount: 1,
+        isRAGActive: true
+    });
 
     const handleModelDownload = async (urlOverride?: string) => {
         setErrorMessage('');
@@ -230,6 +240,63 @@ export default function SettingsScreen() {
                         )}
                         <RegularText>Define how the AI should behave and respond to your requests.</RegularText>
                     </YStack>
+
+                    {/* MCP & RAG Configuration Section */}
+                    <YStack gap="$4">
+                        <TextWithIcon Icon={Server} text="MCP & RAG Enhancement"/>
+                        
+                        {/* Status Overview */}
+                        <MCPConnectionIndicator
+                            serverCount={mcpStatus.serverCount}
+                            connectedCount={mcpStatus.connectedCount}
+                            errorCount={mcpStatus.errorCount}
+                            isRAGActive={mcpStatus.isRAGActive}
+                        />
+
+                        {/* Management Buttons */}
+                        <YStack gap="$2">
+                            <Button
+                                backgroundColor="$gray1"
+                                borderColor="$gray6"
+                                borderWidth={1}
+                                borderRadius="$4"
+                                size="$4"
+                                onPress={() => router.push('/mcpServerScreen' as any)}
+                                justifyContent="space-between"
+                                icon={<Server size={16} color="$gray10" />}
+                            >
+                                <XStack flex={1} alignItems="center" justifyContent="space-between">
+                                    <RegularText fontSize="$4">
+                                        Manage MCP Servers
+                                    </RegularText>
+                                    <ChevronRight size={16} color="$gray10" />
+                                </XStack>
+                            </Button>
+                            
+                            <Button
+                                backgroundColor="$gray1"
+                                borderColor="$gray6"
+                                borderWidth={1}
+                                borderRadius="$4"
+                                size="$4"
+                                onPress={() => router.push('/ragConfigScreen' as any)}
+                                justifyContent="space-between"
+                                icon={<Database size={16} color="$gray10" />}
+                            >
+                                <XStack flex={1} alignItems="center" justifyContent="space-between">
+                                    <RegularText fontSize="$4">
+                                        RAG Configuration
+                                    </RegularText>
+                                    <ChevronRight size={16} color="$gray10" />
+                                </XStack>
+                            </Button>
+                        </YStack>
+
+                        <RegularText fontSize="$3" color="$gray10">
+                            Configure Model Context Protocol servers and Retrieval-Augmented Generation for enhanced AI capabilities with external data sources.
+                        </RegularText>
+                    </YStack>
+                    
                     <YStack gap="$2">
                         <TextWithIcon Icon={HardDrive} text="Local models"/>
                         {downloadInProgress && (

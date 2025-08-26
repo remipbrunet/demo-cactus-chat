@@ -10,11 +10,13 @@ import { ChatMessage, createUserMessage, Message } from '@/components/ui/chat/Ch
 import { ModelDisplay } from '@/components/ui/chat/ModelDisplay';
 import { ModelMetrics } from '@/utils/modelMetrics';
 import { useModelContext } from '@/contexts/modelContext';
+import { useMCPContext } from '@/contexts/mcpContext';
 import { logChatCompletionDiagnostics } from '@/services/diagnostics';
 import { MessageInput } from '@/components/ui/chat/MessageInput';
 import { Model } from '@/services/models';
 // import { VoiceModeOverlay } from '@/components/VoiceModeScreen';
 import { streamLlamaCompletion, generateUniqueId } from '@/services/chat/llama-local';
+import { RAGService } from '@/services/rag';
 
 
 export default function ChatScreen() {
@@ -22,6 +24,18 @@ export default function ChatScreen() {
   const [currentAIMessage, setCurrentAIMessage] = useState<string>('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
+  
+  // Use shared MCP context
+  const { mcpService } = useMCPContext();
+  const [ragService] = useState(() => new RAGService(mcpService));
+  
+  // Update RAG service when MCP service changes
+  useEffect(() => {
+    if (ragService && mcpService) {
+      // Update the RAG service's MCP service reference throughout the entire chain
+      ragService.updateMCPService(mcpService);
+    }
+  }, [mcpService, ragService]);
   
   const scrollViewRef = useRef<any>(null);
   const { 
@@ -153,7 +167,15 @@ export default function ChatScreen() {
         tokenGenerationLimit,
         isReasoningEnabled,
         false, // voiceMode
-        systemPrompt
+        systemPrompt,
+        ragService, // RAG service for enhanced context
+        {
+          enableRAG: true,
+          conversationId: conversationId,
+          streaming: true,
+          voiceMode: false,
+          isReasoningEnabled
+        }
       );      
     } catch (error) {
       console.error('Error in chat:', error);
