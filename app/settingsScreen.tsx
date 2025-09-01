@@ -10,6 +10,7 @@ import { RegularText } from '@/components/ui/RegularText';
 import { downloadModel, extractModelNameFromUrl, validateModelUrl } from '@/utils/modelUtils'
 import { ModelListItem } from '@/components/ui/settings/ModelListItem'
 import { removeLocalModel } from '@/services/storage';
+import { MCPServerSettings } from '@/components/ui/settings/MCPServerSettings';
 
 interface TextWithIconProps {
     Icon: React.ElementType,
@@ -55,10 +56,15 @@ export default function SettingsScreen() {
 
         const urlToDownload = urlOverride || modelUrl;
         
+        console.log('[Download] Attempting to download:', urlToDownload);
+        
         // Validate URL
         const { valid, reason, contentLength } = await validateModelUrl(urlToDownload);
+        console.log('[Download] Validation result:', { valid, reason, contentLength });
+        
         if (!valid) {
             setErrorMessage(reason || 'Invalid URL');
+            console.log('[Download] Validation failed:', reason);
             return;
         }
 
@@ -230,6 +236,10 @@ export default function SettingsScreen() {
                         )}
                         <RegularText>Define how the AI should behave and respond to your requests.</RegularText>
                     </YStack>
+                    
+                    {/* MCP Server Settings */}
+                    <MCPServerSettings />
+                    
                     <YStack gap="$2">
                         <TextWithIcon Icon={HardDrive} text="Local models"/>
                         {downloadInProgress && (
@@ -256,9 +266,9 @@ export default function SettingsScreen() {
                                     isSelected={selectedModel?.value === model.value}
                                 />
                             ))}
-                            {modelsAvailableToDownload.filter(model => !availableModels.some(localModel => localModel.value === extractModelNameFromUrl(model.downloadUrl))).map((model) => (
+                            {modelsAvailableToDownload.filter(model => !availableModels.some(localModel => localModel.value === extractModelNameFromUrl(model.downloadUrl))).map((model, index) => (
                                 <ModelListItem
-                                    key={model.downloadUrl}
+                                    key={`available-${model.name}-${index}`}
                                     modelName={`${model.name}`}
                                     modelComment={model.comment}
                                     downloaded={false}

@@ -24,6 +24,8 @@ export function extractModelNameFromUrl(url: string): string | null {
 
 // Validate URL is a proper HuggingFace GGUF download link
 export async function validateModelUrl(url: string): Promise<{ valid: boolean; reason?: string; contentLength?: number }> {
+  console.log('[ValidateURL] Checking URL:', url);
+  
   if (!url.includes('huggingface.co')) {
     return { valid: false, reason: 'Not a Hugging Face URL' };
   }
@@ -36,17 +38,27 @@ export async function validateModelUrl(url: string): Promise<{ valid: boolean; r
     return { valid: false, reason: 'Not a download link. URL must contain /resolve/' };
   }
 
-  const response = await fetch(url, {method: 'HEAD'});
-  if (response.status !== 200) {
-    return { valid: false, reason: 'Model not found' };
-  }
+  try {
+    console.log('[ValidateURL] Sending HEAD request to:', url);
+    const response = await fetch(url, {method: 'HEAD'});
+    console.log('[ValidateURL] Response status:', response.status);
+    
+    if (response.status !== 200) {
+      return { valid: false, reason: `Model not found (status: ${response.status})` };
+    }
 
-  const contentLength = parseInt(response.headers.get('content-length') || '0');
-  if (contentLength === 0) {
-    return { valid: false, reason: 'Model is empty' };
+    const contentLength = parseInt(response.headers.get('content-length') || '0');
+    console.log('[ValidateURL] Content length:', contentLength);
+    
+    if (contentLength === 0) {
+      return { valid: false, reason: 'Model is empty' };
+    }
+    
+    return { valid: true, contentLength };
+  } catch (error) {
+    console.error('[ValidateURL] Error during HEAD request:', error);
+    return { valid: false, reason: `Network error: ${error.message || 'Unknown error'}` };
   }
-  
-  return { valid: true, contentLength };
 }
 
 // Download a model and return its path

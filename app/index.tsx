@@ -15,6 +15,10 @@ import { MessageInput } from '@/components/ui/chat/MessageInput';
 import { Model } from '@/services/models';
 // import { VoiceModeOverlay } from '@/components/VoiceModeScreen';
 import { streamLlamaCompletion, generateUniqueId } from '@/services/chat/llama-local';
+import { streamUnifiedMCPCompletion, modelSupportsTools } from '@/services/chat/unified-mcp';
+import { MCPToolInvocation } from '@/services/mcp/types';
+import { mcpClient } from '@/services/mcp/client';
+import { MCPStatusIndicator } from '@/components/ui/chat/MCPStatusIndicator';
 
 
 export default function ChatScreen() {
@@ -142,19 +146,43 @@ export default function ChatScreen() {
     
     setIsStreaming(true);
     try {
-      // await sendChatMessage(
-      await streamLlamaCompletion(
-        cactusContext.lm,
-        updatedMessages,
-        selectedModel,
-        chatCallbackPartialMessage,
-        chatCallbackCompleteMessage,
-        true, // streaming
-        tokenGenerationLimit,
-        isReasoningEnabled,
-        false, // voiceMode
-        systemPrompt
-      );      
+      // Use MCP-enhanced completion if model supports it
+      const supportsTools = modelSupportsTools(selectedModel);
+      const hasConnectedServers = mcpClient.getConnectedServers().length > 0;
+      
+      if (supportsTools && hasConnectedServers) {
+        console.log('[Chat] Using MCP-enhanced completion');
+        await streamUnifiedMCPCompletion(
+          cactusContext.lm,
+          updatedMessages,
+          selectedModel,
+          chatCallbackPartialMessage,
+          chatCallbackCompleteMessage,
+          true, // streaming
+          tokenGenerationLimit,
+          isReasoningEnabled,
+          false, // voiceMode
+          systemPrompt,
+          (invocation: MCPToolInvocation) => {
+            console.log('[Chat] Tool invoked:', invocation);
+          }
+        );
+      } else {
+        // Fallback to regular completion
+        console.log('[Chat] Using standard completion (no MCP)');
+        await streamLlamaCompletion(
+          cactusContext.lm,
+          updatedMessages,
+          selectedModel,
+          chatCallbackPartialMessage,
+          chatCallbackCompleteMessage,
+          true, // streaming
+          tokenGenerationLimit,
+          isReasoningEnabled,
+          false, // voiceMode
+          systemPrompt
+        );
+      }
     } catch (error) {
       console.error('Error in chat:', error);
       processFinishedMessage('Sorry, there was an error processing your request.', selectedModel, undefined);
@@ -186,7 +214,10 @@ export default function ChatScreen() {
                 chromeless 
                 onPress={() => router.push('/conversationsScreen')}
               />
-              <ModelDisplay/>
+              <XStack alignItems="center" gap="$2">
+                <ModelDisplay/>
+                <MCPStatusIndicator/>
+              </XStack>
               <Button 
                 icon={<Settings size="$1"/>} 
                 size="$2" 
