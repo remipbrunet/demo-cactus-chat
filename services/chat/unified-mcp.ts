@@ -6,6 +6,8 @@ import { CactusLM } from 'cactus-react-native';
 import { mcpClient } from '../mcp/client';
 import { MCPToolInvocation } from '../mcp/types';
 import { streamLlamaCompletion, ChatProgressCallback, ChatCompleteCallback } from './llama-local';
+import { selectToolForQuery, detectExplicitToolRequest, ToolMatch } from './tool-selection';
+import { buildHammerToolPrompt, cleanStreamingJson } from './hammer-prompt-builder';
 
 interface UnifiedChatOptions {
   streaming?: boolean;
@@ -22,83 +24,323 @@ interface ToolCall {
 
 /**
  * Detects if the model response contains tool calls
+ * Hammer model uses JSON format, potentially in markdown code blocks
  */
 function extractToolCalls(text: string): ToolCall[] {
   const toolCalls: ToolCall[] = [];
   
-  // Pattern 1: XML-style tool calls
-  const xmlPattern = /<tool_call>(.*?)<\/tool_call>/gs;
-  const xmlMatches = text.matchAll(xmlPattern);
+  // Helper function to process a tool call
+  const processToolCall = (toolData: any) => {
+    // Check if toolData exists and is valid
+    if (!toolData || typeof toolData !== 'object') {
+      console.error('[MCP] Invalid tool call format - toolData is not an object:', toolData);
+      return;
+    }
+    
+    if (!toolData.name || typeof toolData.name !== 'string') {
+      console.error('[MCP] Invalid tool call format - missing or invalid name field:', toolData);
+      return;
+    }
+    
+    // Try to match the tool to a connected server
+    const servers = mcpClient.getConnectedServers();
+    let toolFound = false;
+    
+    for (const server of servers) {
+      const tool = server.tools?.find(t => t.name === toolData.name);
+      if (tool) {
+        console.log('[MCP] Matched tool to server:', server.name, 'tool:', toolData.name);
+        toolCalls.push({
+          serverId: server.id,
+          toolName: toolData.name,
+          arguments: toolData.arguments || {},
+        });
+        toolFound = true;
+        break;
+      }
+    }
+    
+    if (!toolFound) {
+      console.error('[MCP] Tool not found in any connected server:', toolData.name);
+      console.log('[MCP] Available tools:', servers.flatMap(s => s.tools?.map(t => t.name) || []));
+    }
+  };
   
-  for (const match of xmlMatches) {
+  // Pattern 1: JSON in markdown code blocks (Hammer's preferred format)
+  // The accumulated text contains streaming artifacts, so we need to extract the final JSON
+  const codeBlockPattern = /```(?:json)?\s*\n?([\s\S]*?)\s*\n?```/g;
+  const codeBlockMatches = text.matchAll(codeBlockPattern);
+  
+  for (const match of codeBlockMatches) {
     try {
-      // Clean up the JSON (remove newlines, extra spaces)
-      const jsonStr = match[1].trim().replace(/\n/g, ' ').replace(/\s+/g, ' ');
-      console.log('[MCP] Attempting to parse tool call JSON:', jsonStr);
-      const toolData = JSON.parse(jsonStr);
+      let jsonContent = match[1].trim();
       
-      // Try to match the tool to a connected server
-      const servers = mcpClient.getConnectedServers();
-      for (const server of servers) {
-        const tool = server.tools?.find(t => t.name === toolData.name);
-        if (tool) {
-          console.log('[MCP] Matched tool to server:', server.name, 'tool:', toolData.name);
-          toolCalls.push({
-            serverId: server.id,
-            toolName: toolData.name,
-            arguments: toolData.arguments || {},
-          });
-          break;
+      // The streaming creates repeated partial JSON like:
+      // {"name": "Context
+      // {"name": "Context7
+      // {"name": "Context7", "arguments": {...}}
+      // We need to extract just the last complete JSON
+      
+      // Find the last complete JSON object by looking for balanced braces
+      let lastValidJson = '';
+      let braceCount = 0;
+      let inString = false;
+      let escapeNext = false;
+      let jsonStart = -1;
+      
+      for (let i = jsonContent.length - 1; i >= 0; i--) {
+        const char = jsonContent[i];
+        
+        if (escapeNext) {
+          escapeNext = false;
+          continue;
+        }
+        
+        if (char === '\\') {
+          escapeNext = true;
+          continue;
+        }
+        
+        if (char === '"' && !escapeNext) {
+          inString = !inString;
+        }
+        
+        if (!inString) {
+          if (char === '}') {
+            if (braceCount === 0) {
+              // Found the end of a JSON object
+              lastValidJson = jsonContent.substring(0, i + 1);
+            }
+            braceCount++;
+          } else if (char === '{') {
+            braceCount--;
+            if (braceCount === 0 && lastValidJson) {
+              // Found the matching start brace
+              jsonStart = i;
+              break;
+            }
+          }
+        }
+      }
+      
+      if (jsonStart >= 0 && lastValidJson) {
+        const finalJson = jsonContent.substring(jsonStart);
+        console.log('[MCP] Extracted final JSON from streaming:', finalJson);
+        try {
+          const toolData = JSON.parse(finalJson);
+          processToolCall(toolData);
+        } catch (parseErr) {
+          console.error('[MCP] Failed to parse extracted JSON:', parseErr);
+          console.error('[MCP] JSON content was:', finalJson);
+        }
+      } else {
+        // Try our cleaner function as fallback
+        const cleanedJson = cleanStreamingJson(jsonContent);
+        if (cleanedJson) {
+          console.log('[MCP] Cleaned JSON from streaming:', cleanedJson);
+          try {
+            const toolData = JSON.parse(cleanedJson);
+            processToolCall(toolData);
+          } catch (parseErr) {
+            console.error('[MCP] Failed to parse cleaned JSON:', parseErr);
+            console.error('[MCP] Cleaned JSON was:', cleanedJson);
+          }
         }
       }
     } catch (error) {
-      console.error('[MCP] Failed to parse tool call:', error, 'Match:', match[1]);
+      console.log('[MCP] Failed to parse code block JSON:', error);
+      console.log('[MCP] Raw content:', match[1].substring(0, 200));
     }
   }
   
-  // No fallback patterns - if the model doesn't generate proper tool calls, that's a failure
+  // Pattern 2: Bare JSON objects (fallback for simpler responses)
+  if (toolCalls.length === 0) {
+    // Find the LAST complete JSON object (to avoid duplicates from streaming)
+    const bareJsonPattern = /\{[^{}]*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{[^{}]*\}\s*\}/g;
+    const bareJsonMatches = Array.from(text.matchAll(bareJsonPattern));
+    
+    // Only process the last match to avoid duplicates
+    if (bareJsonMatches.length > 0) {
+      const lastMatch = bareJsonMatches[bareJsonMatches.length - 1];
+      try {
+        const jsonStr = lastMatch[0].trim();
+        console.log('[MCP] Found bare JSON tool call:', jsonStr);
+        const toolData = JSON.parse(jsonStr);
+        if (toolData) {
+          processToolCall(toolData);
+        } else {
+          console.error('[MCP] Parsed JSON resulted in null/undefined');
+        }
+      } catch (error) {
+        console.log('[MCP] Failed to parse bare JSON:', error);
+        console.log('[MCP] JSON string was:', lastMatch[0]);
+      }
+    }
+  }
   
   return toolCalls;
 }
 
 /**
- * Formats available tools for inclusion in the system prompt
+ * Formats a specific tool prompt when we've identified the right tool via keywords
  */
-function formatToolsForPrompt(): string {
+function formatSpecificToolPrompt(match: ToolMatch, servers: any[], userMessage?: string): string {
+  const server = servers.find(s => s.id === match.serverId);
+  if (!server || !server.tools) return '';
+  
+  const tool = server.tools.find((t: any) => t.name === match.toolName);
+  if (!tool) return '';
+  
+  let prompt = '\n\n## IMPORTANT: USE THIS SPECIFIC TOOL\n\n';
+  prompt += `You MUST use the "${tool.name}" tool to answer this question.\n`;
+  prompt += 'DO NOT use any other tool.\n\n';
+  prompt += 'Output ONLY this JSON (replace the parameter values):\n';
+  prompt += '```json\n';
+  
+  // Create example with actual values from the query
+  const example: any = {
+    name: tool.name,
+    arguments: {}
+  };
+  
+  // Better parameter extraction based on tool type
+  if (tool.inputSchema?.properties) {
+    const required = tool.inputSchema.required || [];
+    
+    for (const param of required) {
+      if (param === 'libraryName') {
+        // For React hooks question, extract "React"
+        if (match.suggestedPrompt?.toLowerCase().includes('react')) {
+          example.arguments[param] = 'react';
+        } else {
+          example.arguments[param] = match.suggestedPrompt || 'library_from_question';
+        }
+      } else if (param === 'query') {
+        example.arguments[param] = match.suggestedPrompt || userMessage;
+      } else if (param === 'context7CompatibleLibraryID') {
+        example.arguments[param] = '/facebook/react';  // Common example
+      } else if (param === 'topic') {
+        // Extract topic from query
+        if (match.suggestedPrompt?.toLowerCase().includes('hook')) {
+          example.arguments[param] = 'hooks';
+        } else {
+          example.arguments[param] = 'relevant_topic';
+        }
+      } else {
+        example.arguments[param] = `${param}_value`;
+      }
+    }
+  }
+  
+  prompt += JSON.stringify(example, null, 2);
+  prompt += '\n```\n\n';
+  prompt += 'Remember: Output ONLY the JSON above with appropriate values. Nothing else.\n';
+  
+  return prompt;
+}
+
+/**
+ * Formats available tools for inclusion in the system prompt
+ * Uses keyword-based selection for Hammer 2.1 static tool calling
+ */
+function formatToolsForPrompt(userMessage?: string): string {
   const servers = mcpClient.getConnectedServers();
   if (servers.length === 0) return '';
   
-  let toolsDescription = '\n\n## MCP TOOL CALLING INSTRUCTIONS\n\n';
-  toolsDescription += 'YOU CAN AND MUST USE TOOLS. You have the ability to call external tools.\n';
-  toolsDescription += 'NEVER say "I cannot call the MCP server". You CAN call it using the format below.\n\n';
-  toolsDescription += '### REQUIRED FORMAT (use exactly this syntax):\n';
-  toolsDescription += '<tool_call>{"name": "tool_name", "arguments": {...}}</tool_call>\n\n';
+  // If we have a user message, try keyword-based selection first
+  if (userMessage) {
+    console.log('[MCP] Analyzing query for tool selection:', userMessage);
+    
+    // Check for explicit tool request
+    const explicitMatch = detectExplicitToolRequest(userMessage);
+    if (explicitMatch) {
+      console.log('[MCP] Explicit tool match:', explicitMatch);
+      return formatSpecificToolPrompt(explicitMatch, servers, userMessage);
+    }
+    
+    // Try automatic keyword matching
+    const autoMatch = selectToolForQuery(userMessage);
+    console.log('[MCP] Auto-match result:', autoMatch);
+    
+    // Lower threshold to 20 for better matching
+    if (autoMatch && autoMatch.confidence > 20) {
+      console.log('[MCP] Using keyword-selected tool:', autoMatch.toolName);
+      return formatSpecificToolPrompt(autoMatch, servers, userMessage);
+    }
+  }
   
-  toolsDescription += '### AVAILABLE TOOLS:\n';
+  // Fallback to generic tool listing (kept minimal for Hammer 2.1)
+  let toolsDescription = '\n\n## TOOLS\n\n';
+  toolsDescription += 'When you need to call a tool, output ONLY this JSON format:\n';
+  toolsDescription += '```json\n';
+  toolsDescription += '{"name": "ACTUAL_TOOL_NAME", "arguments": {...}}\n';
+  toolsDescription += '```\n\n';
+  toolsDescription += 'IMPORTANT: Use the exact tool name (e.g., "resolve-library-id", "microsoft_docs_search"), NOT the server name!\n\n';
+  toolsDescription += 'Available tools:\n\n';
+  
+  // List all tools generically without any hardcoded logic
   for (const server of servers) {
     if (server.tools && server.tools.length > 0) {
-      toolsDescription += `\n**${server.name} Server Tools:**\n`;
+      toolsDescription += `From ${server.name} server:\n`;
+      
       for (const tool of server.tools) {
-        toolsDescription += `- ${tool.name}\n`;
+        toolsDescription += `• Tool name: "${tool.name}"`;
         
-        // For Context7 tools, add specific examples
-        if (tool.name === 'resolve-library-id') {
-          toolsDescription += '  Usage: <tool_call>{"name": "resolve-library-id", "arguments": {"libraryName": "YOUR_LIBRARY"}}</tool_call>\n';
-        } else if (tool.name === 'get-library-docs') {
-          toolsDescription += '  Usage: <tool_call>{"name": "get-library-docs", "arguments": {"context7CompatibleLibraryID": "/org/library"}}</tool_call>\n';
+        // Truncate description to first sentence or 150 chars for brevity
+        if (tool.description) {
+          let shortDesc = tool.description;
+          // Find first sentence
+          const firstPeriod = shortDesc.indexOf('. ');
+          if (firstPeriod > 0 && firstPeriod < 150) {
+            shortDesc = shortDesc.substring(0, firstPeriod + 1);
+          } else if (shortDesc.length > 150) {
+            shortDesc = shortDesc.substring(0, 147) + '...';
+          }
+          toolsDescription += ` - ${shortDesc}`;
+        }
+        toolsDescription += '\n';
+        
+        // Only show required parameters to keep it simple
+        if (tool.inputSchema?.properties) {
+          const required = tool.inputSchema.required || [];
+          if (required.length > 0) {
+            toolsDescription += `  Required: `;
+            toolsDescription += required.join(', ');
+            toolsDescription += '\n';
+            
+            // Simple example with just the tool name and required params
+            const exampleArgs: any = {};
+            for (const param of required) {
+              const paramSchema = (tool.inputSchema.properties as any)[param];
+              if (paramSchema?.type === 'string') {
+                // Use the parameter name as a hint for what to put
+                exampleArgs[param] = param.toLowerCase();
+              } else if (paramSchema?.type === 'number') {
+                exampleArgs[param] = 1;
+              } else if (paramSchema?.type === 'boolean') {
+                exampleArgs[param] = true;
+              } else {
+                exampleArgs[param] = param.toLowerCase();
+              }
+            }
+            
+            const exampleJson = JSON.stringify({
+              name: tool.name,
+              arguments: exampleArgs
+            }, null, 2);
+            
+            toolsDescription += '  Example:\n  ```json\n  ' + exampleJson.split('\n').join('\n  ') + '\n  ```\n';
+          }
         }
       }
       toolsDescription += '\n';
     }
   }
   
-  toolsDescription += '### EXAMPLE:\n';
-  toolsDescription += 'User: "How does jinja2 handle templates?"\n';
-  toolsDescription += 'You: Let me look that up for you.\n';
-  toolsDescription += '<tool_call>{"name": "resolve-library-id", "arguments": {"libraryName": "jinja2"}}</tool_call>\n\n';
-  
-  toolsDescription += 'IMPORTANT: When asked about any library or when a user mentions an MCP server, ';
-  toolsDescription += 'you MUST use the tool call format above. Do NOT say you cannot call the server.\n';
+  toolsDescription += '\nTool Selection Rules:\n';
+  toolsDescription += '1. If the user mentions a specific server name, you MUST use tools from that server only\n';
+  toolsDescription += '2. Match what the user says to the server names shown above (case-insensitive)\n';
+  toolsDescription += '3. If no server is specified, choose based on the type of request\n';
   
   return toolsDescription;
 }
@@ -175,153 +417,424 @@ export async function streamUnifiedMCPCompletion(
   const hasTools = connectedServers.some(s => s.tools && s.tools.length > 0);
   const supportsTools = modelSupportsTools(model);
   
-  // Check if the user's latest message mentions any MCP server by name
-  const latestUserMessage = messages.filter(m => m.role === 'user').pop();
-  const userQuestion = latestUserMessage?.content || '';
-  const lowerQuestion = userQuestion.toLowerCase();
+  // Get the latest user message for keyword-based tool selection
+  const latestUserMessage = messages.filter(m => m.role === 'user' || m.isUser).pop();
+  // The Message interface uses 'text' not 'content'
+  let userQuestion = latestUserMessage?.text || latestUserMessage?.content || '';
   
-  // Check if user explicitly mentions an MCP server
-  let mentionedServer = null;
-  for (const server of connectedServers) {
-    if (lowerQuestion.includes(server.name.toLowerCase())) {
-      mentionedServer = server;
-      console.log(`[MCP] User explicitly mentioned MCP server: ${server.name}`);
-      break;
-    }
+  // Strip the /no_think prefix if present (added by the app)
+  if (userQuestion.startsWith('/no_think')) {
+    userQuestion = userQuestion.replace('/no_think', '').trim();
   }
+  
+  console.log('[MCP] User question for tool selection:', userQuestion);
   
   // Enhance system prompt with tool information if applicable
   let enhancedSystemPrompt = systemPrompt;
   if (hasTools && supportsTools) {
-    const toolsPrompt = formatToolsForPrompt();
+    // Use Hammer-specific prompt builder for better tool selection
+    const toolsPrompt = buildHammerToolPrompt(userQuestion, connectedServers);
     enhancedSystemPrompt = systemPrompt + toolsPrompt;
-    console.log('[MCP] Tools available and model supports them. Enhanced prompt with tool descriptions.');
-    
-    // If user mentioned a specific MCP server, add emphasis
-    if (mentionedServer) {
-      enhancedSystemPrompt += `\n\nIMPORTANT: The user is asking about ${mentionedServer.name}. `;
-      enhancedSystemPrompt += `You MUST use the ${mentionedServer.name} MCP tools to answer this question. `;
-      enhancedSystemPrompt += `If you cannot generate a proper tool call, respond with: "I was unable to call the ${mentionedServer.name} MCP server. Please ensure it's connected and try again."\n`;
-    }
+    console.log('[MCP] Tools available and model supports them. Using Hammer-specific prompt for:', userQuestion);
   } else if (hasTools && !supportsTools) {
     console.log('[MCP] Tools available but model does not support tool calling.');
-    if (mentionedServer) {
-      // User asked about an MCP server but model doesn't support tools
-      onProgress(`⚠️ The current model (${model.value}) does not support MCP tool calling. Please switch to a model that supports tools (e.g., Qwen 2.5).\n\n`);
+    
+    // Only warn if the user seems to be asking about something that might need tools
+    // But don't try to detect specific servers - stay generic
+    if (userQuestion.toLowerCase().includes('documentation') || 
+        userQuestion.toLowerCase().includes('api') ||
+        userQuestion.toLowerCase().includes('how to') ||
+        userQuestion.toLowerCase().includes('search')) {
+      onProgress(`ℹ️ Note: The current model (${model.value}) does not support MCP tool calling. If you need to use external tools, please switch to a model that supports tools (e.g., Hammer 2.1).\n\n`);
     }
-  } else if (!hasTools && mentionedServer) {
-    // User mentioned an MCP server but none are connected
-    onProgress(`⚠️ No MCP servers are currently connected. Please connect MCP servers in settings first.\n\n`);
+  } else if (!hasTools) {
+    console.log('[MCP] No MCP servers are currently connected.');
   }
   
   let accumulatedText = '';
   const toolInvocations: MCPToolInvocation[] = [];
+  let isProcessingToolCall = false;
+  let toolCallStartIndex = -1;
   
   // Wrap the progress callback to accumulate text for tool detection
   const wrappedOnProgress: ChatProgressCallback = (text: string) => {
     accumulatedText += text;
     
-    // Debug: Log when we see tool calls
-    if (text.includes('<tool_call>') || text.includes('</tool_call>')) {
-      console.log('[MCP] Tool call marker in stream:', text.substring(0, 100));
+    // If we're already processing a tool call, just accumulate
+    if (isProcessingToolCall) {
+      console.log('[MCP] Suppressing output during tool call processing');
+      return;
     }
     
-    // For now, just pass through all text normally
-    // We'll process tool calls in the complete callback
+    // Check if we're starting a tool call in the accumulated text
+    if (hasTools && supportsTools && !isProcessingToolCall) {
+      // Look for the start of a JSON code block in accumulated text
+      const jsonBlockIndex = accumulatedText.indexOf('```json');
+      const bareBlockIndex = accumulatedText.indexOf('```\n{');
+      
+      if (jsonBlockIndex !== -1 || bareBlockIndex !== -1) {
+        isProcessingToolCall = true;
+        toolCallStartIndex = Math.min(
+          jsonBlockIndex !== -1 ? jsonBlockIndex : Infinity,
+          bareBlockIndex !== -1 ? bareBlockIndex : Infinity
+        );
+        
+        console.log('[MCP] Tool call detected at index:', toolCallStartIndex);
+        console.log('[MCP] Accumulated text preview:', accumulatedText.substring(Math.max(0, toolCallStartIndex - 50), toolCallStartIndex + 100));
+        
+        // Show any text before the tool call
+        if (toolCallStartIndex > 0) {
+          const preText = accumulatedText.substring(0, toolCallStartIndex).trim();
+          if (preText && !preText.endsWith('🔧 Processing tool request...')) {
+            // Don't show the pre-text, it's already been streamed
+            console.log('[MCP] Pre-tool text already shown via streaming');
+          }
+        }
+        
+        // Show that we're processing a tool call
+        onProgress('\n\n🔧 Processing tool request...\n');
+        console.log('[MCP] Tool call detected (JSON format), suppressing streaming output');
+        return;
+      }
+    }
+    
+    // Normal streaming - pass through text
     onProgress(text);
   };
   
   // Wrap the complete callback to handle tool invocations
   const wrappedOnComplete: ChatCompleteCallback = async (metrics, model, completeMessage) => {
+    console.log('[MCP] Complete callback triggered. Accumulated text length:', accumulatedText.length);
+    console.log('[MCP] Accumulated text preview:', accumulatedText.substring(0, 200));
+    
     // Check if we have tool calls to process
     if (hasTools && supportsTools) {
-      const toolCalls = extractToolCalls(accumulatedText);
+      // First check if the model tried to call a tool (look for JSON code blocks or bare JSON)
+      const hasToolCallAttempt = accumulatedText.includes('```json') || 
+                                 accumulatedText.includes('```\n{') ||
+                                 accumulatedText.includes('"name"') && accumulatedText.includes('"arguments"');
       
-      if (toolCalls.length > 0) {
-        console.log(`[MCP] Processing ${toolCalls.length} tool call(s)`);
-        console.log('[MCP] Full response:', accumulatedText.substring(0, 500));
+      console.log('[MCP] Has tool call attempt:', hasToolCallAttempt);
+      
+      if (hasToolCallAttempt) {
+        const toolCalls = extractToolCalls(accumulatedText);
         
-        // Extract the text before the tool call (model's introduction)
-        const toolCallIndex = accumulatedText.indexOf('<tool_call>');
-        let preToolText = '';
-        let postToolText = '';
-        
-        if (toolCallIndex > 0) {
-          preToolText = accumulatedText.substring(0, toolCallIndex).trim();
-        }
-        
-        // Find any text after the last </tool_call> tag
-        const lastToolCallEnd = accumulatedText.lastIndexOf('</tool_call>');
-        if (lastToolCallEnd !== -1) {
-          postToolText = accumulatedText.substring(lastToolCallEnd + '</tool_call>'.length).trim();
-        }
-        
-        // Clear the message and show clean formatting
-        // Note: The tool call XML will have been shown in the stream, 
-        // so we add the visual indicator after it
-        
-        // Add visual indicator that tools are being invoked
-        onProgress('\n\n---\n🔧 Invoking MCP tools...\n');
-        
-        for (const call of toolCalls) {
-          try {
-            // Show which tool is being called
-            const callingText = `\n📡 Calling ${call.toolName}...`;
-            console.log('[MCP] About to call tool:', call.toolName, 'with args:', call.arguments);
-            onProgress(callingText);
-            
-            console.log('[MCP] Invoking tool via mcpClient.callTool...');
-            const invocation = await mcpClient.callTool(
-              call.serverId,
-              call.toolName,
-              call.arguments
-            );
-            console.log('[MCP] Tool invocation result:', invocation.status);
-            
-            toolInvocations.push(invocation);
-            onToolInvocation?.(invocation);
-            
-            // Format and display the tool result
-            if (invocation.status === 'completed' && invocation.result) {
-              let resultText = '';
+        if (toolCalls.length > 0) {
+          console.log(`[MCP] Processing ${toolCalls.length} tool call(s)`);
+          console.log('[MCP] Tool calls:', toolCalls);
+          
+          // Show we're invoking the tools
+          onProgress('📡 Calling tools...\n');
+          
+          // Store tool results
+          let toolResults: string[] = [];
+          
+          for (const call of toolCalls) {
+            try {
+              console.log('[MCP] Invoking tool:', call.toolName, 'with args:', call.arguments);
               
-              // Special formatting for Context7 results
-              if (call.toolName === 'get-library-docs' && invocation.result.content) {
-                resultText = `\n✅ Documentation retrieved:\n\n${invocation.result.content}\n`;
-              } else if (call.toolName === 'resolve-library-id' && Array.isArray(invocation.result)) {
-                resultText = '\n✅ Found libraries:\n';
-                invocation.result.forEach((lib: any) => {
-                  resultText += `  • ${lib.name} (${lib.id})\n`;
-                });
-              } else {
-                resultText = `\n✅ Tool result:\n${
-                  typeof invocation.result === 'string' 
-                    ? invocation.result 
-                    : JSON.stringify(invocation.result, null, 2)
-                }\n`;
+              const invocation = await mcpClient.callTool(
+                call.serverId,
+                call.toolName,
+                call.arguments
+              );
+              console.log('[MCP] Tool invocation result:', invocation.status);
+              
+              toolInvocations.push(invocation);
+              onToolInvocation?.(invocation);
+              
+              // Collect the tool result
+              if (invocation.status === 'completed' && invocation.result) {
+                // Format the result based on the tool type
+                let formattedResult = '';
+                
+                // DEBUG: Log the actual structure
+                console.log('[MCP] Result type:', typeof invocation.result);
+                console.log('[MCP] Result has content?:', 'content' in invocation.result);
+                console.log('[MCP] Result preview:', JSON.stringify(invocation.result).substring(0, 200));
+                
+                // Check if this is an error response
+                if (invocation.result.isError) {
+                  // Handle error response from MCP server
+                  if (invocation.result.content && Array.isArray(invocation.result.content)) {
+                    // Extract error messages from content array
+                    formattedResult = invocation.result.content.map((item: any) => 
+                      item.text || JSON.stringify(item)
+                    ).join('\n');
+                  } else if (invocation.result.content) {
+                    formattedResult = `Error: ${invocation.result.content}`;
+                  } else {
+                    formattedResult = `Error: ${JSON.stringify(invocation.result)}`;
+                  }
+                } else if (typeof invocation.result === 'string') {
+                  // CRITICAL FIX: Check if the string is actually JSON that needs parsing
+                  console.log('[MCP] Result is string, checking if JSON:', invocation.result.substring(0, 100));
+                  if (invocation.result.startsWith('[{') || invocation.result.startsWith('{')) {
+                    console.log('[MCP] String looks like JSON, parsing it...');
+                    try {
+                      const parsed = JSON.parse(invocation.result);
+                      
+                      // Handle parsed array
+                      if (Array.isArray(parsed)) {
+                        const items = parsed.slice(0, 3);
+                        formattedResult = items.map((item: any) => {
+                          if (item.title && item.content) {
+                            // Just return the content, skip the title
+                            let content = item.content;
+                            // Clean up formatting
+                            content = content.replace(/\\n/g, '\n');
+                            content = content.replace(/^#+\s+/gm, ''); // Remove markdown headers
+                            return content;
+                          }
+                          return typeof item === 'string' ? item : JSON.stringify(item);
+                        }).join('\n\n');
+                      }
+                      // Handle parsed object
+                      else if (parsed.title && parsed.content) {
+                        // Just use content
+                        let content = parsed.content;
+                        content = content.replace(/\\n/g, '\n');
+                        content = content.replace(/^#+\s+/gm, '');
+                        formattedResult = content;
+                      }
+                      else {
+                        formattedResult = invocation.result;
+                      }
+                    } catch (e) {
+                      // Not JSON, use as is
+                      formattedResult = invocation.result;
+                    }
+                  } else {
+                    formattedResult = invocation.result;
+                  }
+                } else if (Array.isArray(invocation.result)) {
+                  // For array results (like library lists or search results)
+                  // Limit to first 3 items for mobile display
+                  const items = invocation.result.slice(0, 3);
+                  formattedResult = items.map((item: any) => {
+                    let text = '';
+                    
+                    if (typeof item === 'string') {
+                      text = item;
+                    } else if (typeof item === 'object') {
+                      // Extract content (skip title as it's usually redundant)
+                      if (item.title && item.content) {
+                        // Only use content, not title (title often repeats the question)
+                        let content = item.content;
+                        // Clean up the content
+                        content = content.replace(/\\n/g, '\n');
+                        content = content.replace(/^#+\s*/gm, ''); // Remove markdown headers
+                        content = content.replace(/\*\*/g, ''); // Remove bold markers
+                        
+                        // Just return the clean content
+                        text = content;
+                      } else {
+                        text = JSON.stringify(item, null, 2);
+                      }
+                    } else {
+                      text = String(item);
+                    }
+                    
+                    // Final cleanup
+                    text = text.replace(/\\n/g, '\n');
+                    text = text.substring(0, 500);
+                    return text + (text.length >= 500 ? '...\n\n[Content truncated]' : '');
+                  }).join('\n\n---\n\n');
+                  
+                  if (invocation.result.length > 3) {
+                    formattedResult += `\n\n[Showing 3 of ${invocation.result.length} results]`;
+                  }
+                } else if (invocation.result.content) {
+                  // For results with content field (like documentation)
+                  if (Array.isArray(invocation.result.content)) {
+                    // Limit array content to first 3 items
+                    const items = invocation.result.content.slice(0, 3);
+                    formattedResult = items.map((item: any) => {
+                      let text = '';
+                      
+                      // CRITICAL: Handle MCP server response format
+                      // The item might have a 'text' field that contains the actual JSON string
+                      if (item.type === 'text' && item.text) {
+                        // The text field contains the JSON string
+                        const jsonString = item.text;
+                        console.log('[MCP] Processing text field:', jsonString.substring(0, 100));
+                        
+                        // Parse the JSON string
+                        if (jsonString.startsWith('[{') || jsonString.startsWith('{')) {
+                          try {
+                            const parsed = JSON.parse(jsonString);
+                            if (Array.isArray(parsed) && parsed[0]?.title && parsed[0]?.content) {
+                              // Just get the content, skip the title
+                              text = parsed[0].content.replace(/\\n/g, '\n').replace(/^#+\s+/gm, '');
+                            } else if (parsed.title && parsed.content) {
+                              text = parsed.content.replace(/\\n/g, '\n').replace(/^#+\s+/gm, '');
+                            } else {
+                              text = jsonString;
+                            }
+                          } catch (e) {
+                            console.error('[MCP] Failed to parse text field JSON:', e);
+                            text = jsonString;
+                          }
+                        } else {
+                          text = jsonString;
+                        }
+                      }
+                      // Handle different content formats from MCP servers
+                      else if (typeof item === 'string') {
+                        text = item;
+                        // Try to parse if it's a JSON string
+                        if (text.startsWith('[{') || text.startsWith('{')) {
+                          try {
+                            const parsed = JSON.parse(text);
+                            if (Array.isArray(parsed) && parsed[0]?.title && parsed[0]?.content) {
+                              // It's an array of results, take the first one's content only
+                              const first = parsed[0];
+                              text = first.content;
+                            } else if (parsed.title && parsed.content) {
+                              // Just use content, not title
+                              text = parsed.content;
+                            }
+                          } catch (e) {
+                            // Keep as string if parsing fails
+                          }
+                        }
+                      } else if (item.text) {
+                        text = item.text;
+                      } else if (item.title && item.content) {
+                        // Microsoft Docs format - only show content, not title
+                        // The title is usually just a repeat of the question
+                        text = item.content;
+                      } else {
+                        text = JSON.stringify(item);
+                      }
+                      
+                      // Critical: Replace literal \n with actual line breaks
+                      text = text.replace(/\\n/g, '\n');
+                      // Remove excess quotes that might wrap the content
+                      text = text.replace(/^["']|["']$/g, '');
+                      // Remove markdown headers for cleaner display
+                      text = text.replace(/^#+\s+/gm, '');
+                      
+                      // If it still looks like escaped JSON, try to parse it
+                      if (text.includes('{"title":') || text.includes('"content":')) {
+                        try {
+                          const parsed = JSON.parse(text);
+                          if (parsed.title && parsed.content) {
+                            // Just use content, skip title for cleaner output
+                            text = parsed.content.replace(/\\n/g, '\n');
+                          } else if (parsed.content) {
+                            text = parsed.content.replace(/\\n/g, '\n');
+                          }
+                        } catch (e) {
+                          // If parsing fails, continue with text as is
+                        }
+                      }
+                      
+                      // Truncate for mobile display
+                      return text.substring(0, 1000) + (text.length > 1000 ? '...' : '');
+                    }).join('\n\n---\n\n');
+                    
+                    if (invocation.result.content.length > 3) {
+                      formattedResult += `\n\n[Showing 3 of ${invocation.result.content.length} sections]`;
+                    }
+                  } else {
+                    // Single content - clean up and truncate for mobile
+                    let text = String(invocation.result.content);
+                    
+                    // Critical: Replace literal \n with actual line breaks
+                    text = text.replace(/\\n/g, '\n');
+                    // Remove excess quotes
+                    text = text.replace(/^["']|["']$/g, '');
+                    // Clean up headers
+                    text = text.replace(/\\n##/g, '\n\n## ');
+                    text = text.replace(/\\n#/g, '\n\n# ');
+                    
+                    // If it looks like JSON with title/content, parse it
+                    if (text.includes('{"title":') || text.includes('"content":')) {
+                      try {
+                        const parsed = JSON.parse(text);
+                        if (parsed.title && parsed.content) {
+                          text = `# ${parsed.title}\n\n${parsed.content.replace(/\\n/g, '\n')}`;
+                        } else if (parsed.content) {
+                          text = parsed.content.replace(/\\n/g, '\n');
+                        }
+                      } catch (e) {
+                        // Continue with text as is
+                      }
+                    }
+                    
+                    formattedResult = text.substring(0, 3000);
+                    if (text.length > 3000) {
+                      formattedResult += '\n\n[Content truncated for mobile display]';
+                    }
+                  }
+                } else {
+                  formattedResult = JSON.stringify(invocation.result, null, 2).substring(0, 1000);
+                }
+                
+                toolResults.push(formattedResult);
+              } else if (invocation.status === 'error') {
+                toolResults.push(`Error: ${invocation.error}`);
               }
-              
-              onProgress(resultText);
-              accumulatedText += resultText;
-            } else if (invocation.status === 'error') {
-              const errorText = `\n❌ Tool error: ${invocation.error}\n`;
-              onProgress(errorText);
-              accumulatedText += errorText;
+            } catch (error) {
+              console.error('Tool invocation failed:', error);
+              toolResults.push(`Failed to invoke ${call.toolName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
-          } catch (error) {
-            console.error('Tool invocation failed:', error);
-            const errorText = `\n❌ Failed to invoke ${call.toolName}: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
-            onProgress(errorText);
-            accumulatedText += errorText;
           }
-        }
-        
-        onProgress('\n---\n');
-        
-        // Add any post-tool text from the model if it exists
-        if (postToolText) {
-          onProgress('\n' + postToolText);
-          accumulatedText += '\n' + postToolText;
+          
+          // Now show the complete response with tool results
+          if (toolResults.length > 0) {
+            console.log('[MCP] Tool results obtained:', toolResults.length, 'results');
+            
+            // Safe preview logging
+            try {
+              const preview = String(toolResults[0]).substring(0, 200);
+              console.log('[MCP] First result preview:', preview);
+            } catch (e) {
+              console.log('[MCP] Could not preview result:', e);
+            }
+            
+            // Build the final result message - just show the content, no header
+            const fullResult = toolResults.join('\n\n');
+            
+            // CRITICAL: Reset the isProcessingToolCall flag so output isn't suppressed
+            isProcessingToolCall = false;
+            
+            // Update accumulated text with the full result
+            accumulatedText = fullResult;
+            
+            // IMPORTANT: Show the results to the user via onProgress
+            // This is critical when streaming was suppressed
+            onProgress(fullResult);
+            
+            console.log('[MCP] Showed results to user via onProgress');
+            console.log('[MCP] Full result length:', fullResult.length);
+          } else {
+            console.log('[MCP] No tool results obtained');
+            // Reset flag
+            isProcessingToolCall = false;
+            // If no results, ensure we show something
+            accumulatedText = 'Unable to retrieve tool results.';
+            onProgress(accumulatedText);
+          }
+        } else {
+          // Model tried to call a tool but it wasn't recognized
+          console.error('[MCP] Model attempted tool call but no valid tools were extracted');
+          // Reset flag so error message shows
+          isProcessingToolCall = false;
+          onProgress('\n❌ Error: The tool call could not be processed. The tool may not exist or the format was incorrect.\n');
+          
+          // Show what the model tried to call
+          const codeBlockMatch = accumulatedText.match(/```(?:json)?\s*\n?(\{[\s\S]*?\})\s*\n?```/);
+          if (codeBlockMatch) {
+            console.error('[MCP] Failed tool call attempt (code block):', codeBlockMatch[1]);
+          } else {
+            // Check for bare JSON
+            const jsonMatch = accumulatedText.match(/\{[^{}]*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{[^{}]*\}\s*\}/);
+            if (jsonMatch) {
+              console.error('[MCP] Failed tool call attempt (bare JSON):', jsonMatch[0]);
+            }
+          }
         }
       }
     }
@@ -330,33 +843,13 @@ export async function streamUnifiedMCPCompletion(
     onComplete(metrics, model, accumulatedText);
   };
   
-  // Store the mentioned server for the completion callback
-  const contextData = { mentionedServer };
-  
-  // Wrap the complete callback with server context
-  const wrappedCompleteWithContext: ChatCompleteCallback = async (metrics, model, completeMessage) => {
-    // Check if user mentioned an MCP server but no tools were called
-    if (contextData.mentionedServer && hasTools && supportsTools) {
-      const toolCalls = extractToolCalls(accumulatedText);
-      if (toolCalls.length === 0) {
-        console.log(`[MCP] User mentioned ${contextData.mentionedServer.name} but no tool calls were generated`);
-        const warningText = `\n\n⚠️ I was unable to call the ${contextData.mentionedServer.name} MCP server. The model did not generate proper tool calls.\n`;
-        onProgress(warningText);
-        accumulatedText += warningText;
-      }
-    }
-    
-    // Call the original wrapped complete callback
-    return wrappedOnComplete(metrics, model, completeMessage);
-  };
-  
   // Use the base Llama completion with our wrapped callbacks
   return streamLlamaCompletion(
     lm,
     messages,  // Use original messages, no pre-fetching
     model,
     wrappedOnProgress,
-    wrappedCompleteWithContext,
+    wrappedOnComplete,
     streaming,
     maxTokens,
     isReasoningEnabled,

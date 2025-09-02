@@ -19,6 +19,7 @@ import { streamUnifiedMCPCompletion, modelSupportsTools } from '@/services/chat/
 import { MCPToolInvocation } from '@/services/mcp/types';
 import { mcpClient } from '@/services/mcp/client';
 import { MCPStatusIndicator } from '@/components/ui/chat/MCPStatusIndicator';
+import { MCPStorage } from '@/services/mcp/storage';
 
 
 export default function ChatScreen() {
@@ -56,6 +57,36 @@ export default function ChatScreen() {
     
     loadConversationState();
   }, [conversationId]);
+  
+  // Auto-connect MCP servers on app startup
+  useEffect(() => {
+    const connectMCPServers = async () => {
+      try {
+        console.log('[Chat] Loading and connecting MCP servers...');
+        const servers = await MCPStorage.loadServers();
+        const enabledServers = servers.filter(s => s.enabled);
+        
+        console.log(`[Chat] Found ${enabledServers.length} enabled MCP servers`);
+        
+        for (const server of enabledServers) {
+          try {
+            console.log(`[Chat] Connecting to ${server.name}...`);
+            await mcpClient.connectToServer(server);
+            console.log(`[Chat] Successfully connected to ${server.name}`);
+          } catch (error) {
+            console.error(`[Chat] Failed to connect to ${server.name}:`, error);
+          }
+        }
+        
+        const connectedCount = mcpClient.getConnectedServers().length;
+        console.log(`[Chat] MCP initialization complete. ${connectedCount} servers connected.`);
+      } catch (error) {
+        console.error('[Chat] Failed to initialize MCP servers:', error);
+      }
+    };
+    
+    connectMCPServers();
+  }, []);
 
   // Save conversation when messages change
   const saveCurrentConversation = async (currentMessages: Message[]) => {

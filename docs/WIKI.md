@@ -250,6 +250,88 @@ Edit server settings to add authentication:
 - Each server can provide different tools
 - Automatic tool routing based on availability
 
+#### MCP Architecture Options
+
+##### Option 1: Generic Tool Handling (For Dynamic Models)
+The MCP integration can be completely generic and scalable for models that support dynamic tool selection:
+
+**Key Design Principles:**
+- **No Hardcoded Logic**: The system does not contain any server-specific keywords or detection logic
+- **Dynamic Tool Discovery**: All tools are discovered dynamically from connected MCP servers
+- **Model-Based Selection**: The LLM model itself decides which tool to use based on descriptions
+- **Unlimited Scalability**: Works identically whether you have 2 or 200 MCP servers
+
+**How It Works:**
+1. **Tool Discovery**: System queries all connected MCP servers for their available tools
+2. **Prompt Generation**: Creates a unified prompt with all tools and their descriptions
+3. **Model Decision**: The LLM analyzes the user's question and selects the appropriate tool
+4. **Generic Invocation**: Tool calls are routed to the correct server dynamically
+
+##### Option 2: Keyword-Based Static Tool Selection (For Hammer 2.1)
+
+For models like Hammer 2.1 (1.5B parameters) that only support static tool calling, a keyword-based selection system is implemented:
+
+**Implementation Details:**
+- **File**: `/services/chat/hammer-prompt-builder.ts`
+- **Purpose**: Detect keywords in user queries to determine which MCP server to use
+- **Benefit**: Works reliably with smaller models that can't dynamically select tools
+
+**Keyword Mappings:**
+
+**Context7 (NPM/Framework Documentation):**
+```javascript
+// Triggers Context7's tools
+'react', 'vue', 'angular', 'npm', 'hook', 
+'component', 'useState', 'useEffect', 'webpack',
+'typescript', 'eslint', 'jest', 'cypress'
+```
+
+**Microsoft Docs (Azure/Microsoft Documentation):**
+```javascript
+// Triggers microsoft_docs_search tool
+'azure', 'microsoft', '.net', 'dotnet', 'cosmos', 
+'blob', 'entra', 'pim', 'active directory', 'graph',
+'office', 'teams', 'sharepoint', 'dynamics'
+```
+
+**How Keyword Selection Works:**
+1. User asks a question (e.g., "What is PIM in EntraID?")
+2. System strips any prefixes (like `/no_think`)
+3. Keywords are detected ('entra' and 'pim' found)
+4. Specific prompt generated for the matching tool
+5. Hammer 2.1 outputs JSON tool call
+6. MCP server processes the request
+7. Results parsed from nested response structure
+8. Results displayed in clean, natural language
+
+**Critical Implementation Detail - Nested Response Handling:**
+MCP servers may return responses with complex nested structures. For example, Microsoft Docs returns:
+```javascript
+// Response structure from MCP server
+{
+  result: {
+    content: [{
+      type: "text",
+      text: "[{\"title\":\"Title Here\",\"content\":\"Actual content\"}]"
+    }]
+  }
+}
+```
+The system must parse this nested structure to extract clean content without JSON artifacts or titles showing in the chat.
+
+**Verified Test Cases:**
+- ✅ "How do React hooks work?" → Context7's get-library-docs
+- ✅ "What is PIM in EntraID?" → microsoft_docs_search
+- ✅ "Azure Blob Storage setup" → microsoft_docs_search
+- ✅ Questions without keywords → Shows all available tools
+
+**Adding More Keywords:**
+1. Edit `/services/chat/hammer-prompt-builder.ts`
+2. Add keywords to appropriate section (lines 9-16 for Context7, lines 41-50 for Microsoft)
+3. Restart Metro bundler if needed
+
+This dual architecture ensures the system works optimally with both advanced models (dynamic selection) and smaller models (keyword-based selection).
+
 ---
 
 ## Development
@@ -329,5 +411,5 @@ demo-cactus-chat/
 
 ---
 
-*Last updated: [Current Date]*
-*Version: 1.0.0*
+*Last updated: September 2, 2025*
+*Version: 1.1.1*
